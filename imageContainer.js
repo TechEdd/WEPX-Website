@@ -44,40 +44,40 @@ innerContainer.addEventListener('mousemove', (e) => {
 	}
 	cursorX = e.clientX;
 	cursorY = e.clientY;
-	
+
 	const tooltipWidth = tooltip.offsetWidth;
-	
+
 	tooltip.textContent = getPixelValue();
-	tooltip.style.left = `${event.pageX - tooltipWidth /2}px`; // Center horizontally
-    tooltip.style.top = `${event.pageY-40}px`; // Center vertically
+	tooltip.style.left = `${event.pageX - tooltipWidth / 2}px`; // Center horizontally
+	tooltip.style.top = `${event.pageY - 40}px`; // Center vertically
 	tooltip.style.display = 'block';             // Make the tooltip visible
-	
+
 });
 
-function getPixelValue(){
+function getPixelValue() {
 
 	//get pixel index
 	const rect = canvas.getBoundingClientRect();
 	let x = cursorX - rect.left; // X position relative to the canvas
 	let y = cursorY - rect.top;  // Y position relative to the canvas
-	const zoomingFactorX = canvas.width/rect.width;
-	const zoomingFactorY = canvas.height/rect.height;
-	
+	const zoomingFactorX = canvas.width / rect.width;
+	const zoomingFactorY = canvas.height / rect.height;
+
 	//get value of array
-	x = parseInt(x*zoomingFactorX);
-	y = parseInt(y*zoomingFactorY);
+	x = parseInt(x * zoomingFactorX);
+	y = parseInt(y * zoomingFactorY);
 	let value = null;
 	console.log(x, y)
 	//out of range
-	if ((x<0 && x < canvas.width) || (y<0 && y < canvas.height)){
+	if ((x < 0 && x < canvas.width) || (y < 0 && y < canvas.height)) {
 		value = null;
 	} else {
 		value = rgbArray[y][x];
 	}
-	
+
 	console.log(value);
 	return value;
-	
+
 }
 
 // Handle zoom with W (zoom in) and S (zoom out) keys, move with arrows
@@ -107,9 +107,9 @@ document.addEventListener('keydown', (e) => {
 
 // Zoom on mouse wheel
 document.addEventListener('wheel', (e) => {
-    e.preventDefault();
-    const zoomDirection = e.deltaY < 0 ? zoomSpeed : -zoomSpeed;
-    zoomContainer(zoomDirection, e.clientX, e.clientY);
+	e.preventDefault();
+	const zoomDirection = e.deltaY < 0 ? zoomSpeed : -zoomSpeed;
+	zoomContainer(zoomDirection, e.clientX, e.clientY);
 }, { passive: false });
 
 
@@ -142,7 +142,7 @@ innerContainer.addEventListener('touchmove', (e) => {
 		zoomLevel = Math.max(initialZoom + zoomAmount, 0.3);
 		updateContainerTransform();
 	}
-	
+
 });
 
 innerContainer.addEventListener('touchend', () => {
@@ -152,8 +152,8 @@ innerContainer.addEventListener('touchend', () => {
 
 function zoomContainer(zoomAmount, mouseX, mouseY) {
 	const prevZoomLevel = zoomLevel;
-	if (zoomLevel<1) {
-		zoomAmount = zoomAmount/4; //slower on unzoom
+	if (zoomLevel < 1) {
+		zoomAmount = zoomAmount / 4; //slower on unzoom
 	}
 	zoomLevel = Math.max(zoomLevel + zoomAmount, 0.3); // Prevent zooming out too far
 
@@ -178,7 +178,7 @@ function updateContainerTransform() {
 	const transformValue = `matrix(${zoomLevel}, 0, 0, ${zoomLevel}, ${imgX}, ${imgY})`;
 	innerContainer.style.transform = transformValue;
 
-	
+
 }
 
 function getTouchDistance(e) {
@@ -194,10 +194,10 @@ function determineDistance() {
 	const fullmapbbox = [-180, -90, 180, 90];
 	//get in model_extent.json
 	const forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 52.62870288555903];
-	
-		// Map dimensions in pixels (you need to know these dimensions)
+
+	// Map dimensions in pixels (you need to know these dimensions)
 	const mapPixelWidth = img.width;  // Same as image
-	const mapPixelHeight = img.width/2; // /2 because of aspect ratio of platecarree
+	const mapPixelHeight = img.width / 2; // /2 because of aspect ratio of platecarree
 
 	// Calculate the width and height of the full map and forecast in degrees
 	const lon_min_map = fullmapbbox[0];
@@ -236,7 +236,7 @@ function determineDistance() {
 	canvas.style.height = `${forecastPixelHeight}px`;
 	canvas.style.left = `${startX}px`;
 	canvas.style.top = `${startY}px`;
-	
+
 }
 
 function scaleImages() {
@@ -245,11 +245,11 @@ function scaleImages() {
 	let loadedImagesCount = 0;
 
 	// Define the resolution of the main image
-	const desiredWidth = 3000; 
-	const desiredHeight = 1290; 
-	
+	const desiredWidth = 3000;
+	const desiredHeight = 1290;
+
 	map.Width = desiredWidth
-	map.height = desiredWidth/2; // /2 because of aspect ratio of platecarree
+	map.height = desiredWidth / 2; // /2 because of aspect ratio of platecarree
 
 	// Function to check if all images are loaded
 	let checkAllImagesLoaded = () => {
