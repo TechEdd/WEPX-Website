@@ -54,32 +54,40 @@ function getArray(){
 
 	// Get the image data (RGBA values)
 	const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-	const data = imageData.data;  // The RGBA array for the image
+	const data = imageData.data;  // The RGB array for the image
 
 	// Create a 2D array to hold 24-bit values
 	const width = canvas.width;
 	const height = canvas.height;
-	let rgbArray = [];
+	let rgbArray = new Float32Array(height * width); // Pre-allocate the array
 	
 	let oldMin = 0;
 	let oldMax = 16777215;
 	
 	// Loop through the image data and convert RGBA to 24-bit RGB values
-	for (let y = 0; y < height; y++) {
+	let y = 0;
+	while (y < height) {
 		let row = [];
-		for (let x = 0; x < width; x++) {
+		let x = 0;
+		while (x < width) {
 			const index = (y * width + x) * 4;
 			let r = data[index];       // Red channel (0-255)
 			let g = data[index + 1];   // Green channel (0-255)
 			let b = data[index + 2];   // Blue channel (0-255)
 
 			// Convert to 24-bit integer (RGB)
-			let intValue = (r * 256**2) + (256*g) + b;  // 24-bit integer (RGB)
-			let scaledValue = ((intValue / oldMax) * (maxValue - minValue)) + minValue
-			row.push(scaledValue);
+			let intValue = (r * 256 ** 2) + (256 * g) + b;  // 24-bit integer (RGB)
+			let scaledValue = ((intValue / oldMax) * (maxValue - minValue)) + minValue;
+
+			rgbArray[y * width + x] = scaledValue;
+
+
+			x++; // Increment x for the inner loop
 		}
-		rgbArray.push(row);
+		
+		y++; // Increment y for the outer loop
 	}
+
 	console.timeEnd('getArray');
 
 	// Now rgbArray is a 2D array containing the 24-bit values for each pixel
@@ -129,10 +137,13 @@ function getColorForValue(value) {
 	}
 	console.timeEnd('convertToCanvas');
 } */
+
 function convertToCanvas(){
 	rgbArray = getArray();
-	width = rgbArray[0].length;
-	height = rgbArray.length;
+	width = canvas.width;
+	height = canvas.height;
+
+	console.log(width, height)
 	
 	console.time('convertToCanvas');
 	const ctx = canvas.getContext('2d');
@@ -144,16 +155,28 @@ function convertToCanvas(){
 	let i = 0;
 	for (let y = 0; y < height; y++) {
 		for (let x = 0; x < width; x++) {
-			r = imageData.data[i] = getColorForValue(rgbArray[y][x])[0];     // Red
-			g = imageData.data[i + 1] = getColorForValue(rgbArray[y][x])[1]; // Green
-			b = imageData.data[i + 2] = getColorForValue(rgbArray[y][x])[2]; // Blue
-			if (r == 0 && g == 0 && b == 0) {				
+			// Get the 1D index for the 2D position in rgbClampedArray
+			const rgbIndex = y * width + x;
+
+			// Retrieve the scaled value
+			const value = rgbArray[rgbIndex];
+
+			// Map the value to an RGB color
+			let [r, g, b] = getColorForValue(value);
+
+			// Assign colors to the imageData array
+			imageData.data[i] = r;       // Red
+			imageData.data[i + 1] = g;   // Green
+			imageData.data[i + 2] = b;   // Blue
+
+			if (r == 0 && g == 0 && b == 0) {
 				imageData.data[i + 3] = 0; // Alpha (fully opaque)
 			} else {
-				let alpha = Math.max(0, Math.min(255, ((r+g+b)/3))**2);
+				let alpha = Math.max(0, Math.min(255, ((r + g + b) / 3)) ** 2);
 				imageData.data[i + 3] = alpha;
 			}
-			i += 4;  // Move to the next pixel (each pixel has 4 values: RGBA)
+
+			i += 4; // Move to the next pixel in the imageData array
 		}
 	}
 		

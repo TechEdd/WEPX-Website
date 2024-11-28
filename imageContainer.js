@@ -67,15 +67,13 @@ function getPixelValue() {
 	x = parseInt(x * zoomingFactorX);
 	y = parseInt(y * zoomingFactorY);
 	let value = null;
-	console.log(x, y)
 	//out of range
 	if ((x < 0 && x < canvas.width) || (y < 0 && y < canvas.height)) {
 		value = null;
 	} else {
-		value = rgbArray[y][x];
+		value = rgbArray[y * canvas.width + x];
 	}
 
-	console.log(value);
 	return value;
 
 }
