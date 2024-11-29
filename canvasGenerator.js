@@ -1,45 +1,45 @@
-const img = document.getElementById("forecast");	
+const img = document.getElementById("forecast");
 const canvas = document.getElementById('canvas');
 let rgbArray;
 let minValue = -60; // Min value for the new range
 let maxValue = 60;  // Max value for the new range
-const max24BitValue = 256**3;
+const max24BitValue = 256 ** 3;
 // Color table as an array of tuples (value, r, g, b)
 let colorTable = [
-  { value: -30, color: [68, 1, 84] },
-  { value: -28, color: [70, 12, 95] },
-  { value: -26, color: [72, 25, 107] },
-  { value: -24, color: [72, 35, 116] },
-  { value: -22, color: [70, 47, 124] },
-  { value: -20, color: [68, 57, 130] },
-  { value: -18, color: [64, 67, 135] },
-  { value: -16, color: [61, 76, 137] },
-  { value: -14, color: [56, 86, 139] },
-  { value: -12, color: [52, 94, 141] },
-  { value: -10, color: [48, 103, 141] },
-  { value: -8, color: [45, 111, 142] },
-  { value: -6, color: [41, 120, 142] },
-  { value: -4, color: [38, 127, 142] },
-  { value: -2, color: [35, 136, 141] },
-  { value: 0, color: [32, 144, 140] },
-  { value: 2, color: [30, 152, 138] },
-  { value: 4, color: [30, 160, 135] },
-  { value: 6, color: [34, 167, 132] },
-  { value: 8, color: [42, 176, 126] },
-  { value: 10, color: [53, 183, 120] },
-  { value: 12, color: [68, 190, 112] },
-  { value: 14, color: [83, 197, 103] },
-  { value: 16, color: [103, 204, 92] },
-  { value: 18, color: [121, 209, 81] },
-  { value: 20, color: [144, 214, 67] },
-  { value: 22, color: [165, 218, 53] },
-  { value: 24, color: [189, 222, 38] },
-  { value: 26, color: [210, 225, 27] },
-  { value: 28, color: [233, 228, 25] },
-  { value: 30, color: [253, 231, 36] },
+	{ value: -30, color: [68, 1, 84] },
+	{ value: -28, color: [70, 12, 95] },
+	{ value: -26, color: [72, 25, 107] },
+	{ value: -24, color: [72, 35, 116] },
+	{ value: -22, color: [70, 47, 124] },
+	{ value: -20, color: [68, 57, 130] },
+	{ value: -18, color: [64, 67, 135] },
+	{ value: -16, color: [61, 76, 137] },
+	{ value: -14, color: [56, 86, 139] },
+	{ value: -12, color: [52, 94, 141] },
+	{ value: -10, color: [48, 103, 141] },
+	{ value: -8, color: [45, 111, 142] },
+	{ value: -6, color: [41, 120, 142] },
+	{ value: -4, color: [38, 127, 142] },
+	{ value: -2, color: [35, 136, 141] },
+	{ value: 0, color: [32, 144, 140] },
+	{ value: 2, color: [30, 152, 138] },
+	{ value: 4, color: [30, 160, 135] },
+	{ value: 6, color: [34, 167, 132] },
+	{ value: 8, color: [42, 176, 126] },
+	{ value: 10, color: [53, 183, 120] },
+	{ value: 12, color: [68, 190, 112] },
+	{ value: 14, color: [83, 197, 103] },
+	{ value: 16, color: [103, 204, 92] },
+	{ value: 18, color: [121, 209, 81] },
+	{ value: 20, color: [144, 214, 67] },
+	{ value: 22, color: [165, 218, 53] },
+	{ value: 24, color: [189, 222, 38] },
+	{ value: 26, color: [210, 225, 27] },
+	{ value: 28, color: [233, 228, 25] },
+	{ value: 30, color: [253, 231, 36] },
 ];
-	
-function getArray(){
+
+function getArray() {
 	console.time('getArray');
 	// Create a canvas element to draw the image
 	const canvas = document.createElement("canvas");
@@ -60,10 +60,10 @@ function getArray(){
 	const width = canvas.width;
 	const height = canvas.height;
 	let rgbArray = new Float32Array(height * width); // Pre-allocate the array
-	
+
 	let oldMin = 0;
 	let oldMax = 16777215;
-	
+
 	// Loop through the image data and convert RGBA to 24-bit RGB values
 	let y = 0;
 	while (y < height) {
@@ -84,7 +84,7 @@ function getArray(){
 
 			x++; // Increment x for the inner loop
 		}
-		
+
 		y++; // Increment y for the outer loop
 	}
 
@@ -96,55 +96,28 @@ function getArray(){
 }
 
 // sleep time expects milliseconds
-function sleep (time) {
-  return new Promise((resolve) => setTimeout(resolve, time));
+function sleep(time) {
+	return new Promise((resolve) => setTimeout(resolve, time));
 }
-
 
 
 // Function to get the color for a given value
 function getColorForValue(value) {
-  for (let i = colorTable.length - 1; i >= 0; i--) {
-	if (value >= colorTable[i].value) {
-	  return colorTable[i].color;
+	for (let i = colorTable.length - 1; i >= 0; i--) {
+		if (value >= colorTable[i].value) {
+			return colorTable[i].color;
+		}
 	}
-  }
-  return [0, 0, 0]; // Default to black if value is below the range
+	return [0, 0, 0]; // Default to black if value is below the range
 }
 
-
-/* function convertToCanvas(){
-	data = getArray();
-	console.time('convertToCanvas');
-
-	// Get canvas element and set its size
-	const canvas = document.getElementById('canvas');
-	const ctx = canvas.getContext('2d');
-	
-	for(var i=0; i< data.length; i++){ 
-		for(var j=0; j< data[0].length; j++){ 
-			r = getColorForValue(data[i][j])[0]; 
-			g = getColorForValue(data[i][j])[1];	 
-			b = getColorForValue(data[i][j])[2];	
-			if (r === 0 && g === 0 && b === 0){
-				ctx.fillStyle = "rgba("+r+","+g+","+b+", 0)";
-			} else {
-			let alpha = Math.max(0, Math.min(255, ((r+g+b)/3))**2);
-				ctx.fillStyle = "rgba("+r+","+g+","+b+", "+alpha+")";
-			}
-			ctx.fillRect( j, i, 1, 1 ); 
-		} 
-	}
-	console.timeEnd('convertToCanvas');
-} */
-
-function convertToCanvas(){
+function convertToCanvas() {
 	rgbArray = getArray();
 	width = canvas.width;
 	height = canvas.height;
 
 	console.log(width, height)
-	
+
 	console.time('convertToCanvas');
 	const ctx = canvas.getContext('2d');
 
@@ -179,7 +152,7 @@ function convertToCanvas(){
 			i += 4; // Move to the next pixel in the imageData array
 		}
 	}
-		
+
 	// Put the image data on the canvas
 	ctx.putImageData(imageData, 0, 0);
 	console.timeEnd('convertToCanvas');

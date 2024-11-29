@@ -1,11 +1,11 @@
 <?php
 //ex: getListOfFiles.php?request=model&model=HRRR&run=00&variable=CAPE&level=all_lev
 // Get URL parameters
-$request = $_GET['request'] ?? null;
-$model = $_GET['model'] ?? null;
-$run = $_GET['run'] ?? null;
-$variable = $_GET['variable'] ?? null;
-$level = $_GET['level'] ?? null;
+$request = $_GET['request'] ?? 'model';
+$model = $_GET['model'] ?? 'HRRR';
+$run = $_GET['run'] ?? '00';
+$variable = $_GET['variable'] ?? 'CAPE';
+$level = $_GET['level'] ?? 'all_lev';
 
 // Validate the parameters
 if (!$model || !$run || !$variable || !$level || !$request) {
@@ -73,7 +73,6 @@ foreach ($filteredFiles as $file) {
 }
 
 // Output the final JSON structure
-header('Content-Type: application/json');
 echo json_encode([
     "vmin" => $vmin,
     "vmax" => $vmax,
