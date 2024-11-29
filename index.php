@@ -227,7 +227,7 @@
 	let variable = "<?php echo $_GET['variable'] ?? 'CAPE'; ?>";
 	let level = "<?php echo $_GET['level'] ?? 'all_lev'; ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
-	let run = data["run"];
+	let run = data["run"]*1000;
 	let runNb = new Date(parseInt(run)).getUTCHours();
 
 </script>
