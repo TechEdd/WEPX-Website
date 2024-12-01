@@ -219,8 +219,8 @@
 
 <script>
 	function resizeCanvas(){
-		document.getElementById("map").width = document.getElementById("canvas").width = document.getElementById("forecast").width;
-		document.getElementById("map").height= document.getElementById("canvas").height = document.getElementById("forecast").height;
+		document.getElementById("map").width = document.getElementById("canvas").width;
+		document.getElementById("map").height= document.getElementById("canvas").height;
 	}
 	let request = "<?php echo $_GET['request'] ?? 'model'; ?>";
 	let model = "<?php echo $_GET['model'] ?? 'HRRR'; ?>";
@@ -229,6 +229,16 @@
 	let data = <?php require 'getListOfFiles.php';?>;
 	let run = data["run"]*1000;
 	let runNb = new Date(parseInt(run)).getUTCHours();
+	let minValue = data["vmin"];
+	let maxValue = data["vmax"];
+
+	//inverted colormaps
+	if (variable!="CIN"){
+		nodata = data["vmin"];
+	} else {
+		nodata = data["vmax"]
+		
+	}
 
 </script>
 <body>
@@ -253,15 +263,14 @@
 		<div id="tooltip" class="tooltip"></div>
 		<div id="inner-container">
 			<!-- Add multiple images of varying sizes -->
-			<img class="image" id="forecast" src="DPT.lev_2_m_above_ground.01.webp" alt="Attached Image" style="top: 0px; left: 0px; display: none" onload="resizeCanvas()">
 			<canvas class="image" id="canvas" style="top: 0px; left: 0px; z-index:50"></canvas>
 			<img class="image" id="map" src="full_map.webp" alt="Main Image" style="top: 0; left: 0; z-index:99">
 
 		</div>
 	</div>
 
-	<script src="canvasGenerator.js"></script>
 	<script src="imageContainer.js"></script>
+	<script src="canvasGenerator.js"></script>
 	<script src="menuGenerator.js"></script>
 	
 </body>

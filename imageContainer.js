@@ -194,8 +194,8 @@ function determineDistance() {
 	const forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 52.62870288555903];
 
 	// Map dimensions in pixels (you need to know these dimensions)
-	const mapPixelWidth = img.width;  // Same as image
-	const mapPixelHeight = img.width / 2; // /2 because of aspect ratio of platecarree
+	const mapPixelWidth = canvas.width;  // Same as image
+	const mapPixelHeight = canvas.width / 2; // /2 because of aspect ratio of platecarree
 
 	// Calculate the width and height of the full map and forecast in degrees
 	const lon_min_map = fullmapbbox[0];
@@ -276,6 +276,5 @@ function scaleImages() {
 }
 
 // Call the function to scale images
-determineDistance();
 scaleImages();
 

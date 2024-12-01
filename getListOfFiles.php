@@ -7,18 +7,12 @@ $run = $_GET['run'] ?? '00';
 $variable = $_GET['variable'] ?? 'CAPE';
 $level = $_GET['level'] ?? 'all_lev';
 
-// Validate the parameters
-if (!$model || !$run || !$variable || !$level || !$request) {
-    die("Missing required URL parameters.\n 
-	");
-}
-
 // Define the directory to search
-$directory = "../downloads/$model/$run/";
+$directory = "./downloads/$model/$run/";
 
 if ($request == "model"){
 // Define the directory to search
-$directory = "../WEPX Weather Toolkit Backend/downloads/$model/$run/";
+$directory = "./downloads/$model/$run/";
 } else {
 	die("wrong request");
 }
@@ -43,6 +37,7 @@ $output = [];
 $vmin = null;
 $vmax = null;
 $run = null;
+$nodata = null;
 $files = [];
 
 foreach ($filteredFiles as $file) {
@@ -52,8 +47,8 @@ foreach ($filteredFiles as $file) {
     if (file_exists($jsonFilePath)) {
         $metadata = json_decode(file_get_contents($jsonFilePath), true);
 
-        // Set vmin, vmax, and run only once
-        if ($vmin === null && $vmax === null && $run === null && isset($metadata["vmin"], $metadata["vmax"], $metadata["run"])) {
+        // Set vmin, vmax, and run only if they are not already set
+        if ($vmin === null && isset($metadata["vmin"], $metadata["vmax"], $metadata["run"])) {
             $vmin = $metadata["vmin"];
             $vmax = $metadata["vmax"];
             $run = $metadata["run"];
@@ -71,6 +66,7 @@ foreach ($filteredFiles as $file) {
         ];
     }
 }
+
 
 // Output the final JSON structure
 echo json_encode([
