@@ -257,6 +257,9 @@
 			<div class="unavailable-rectangle"></div>
 			<input type="range" min="0" max="48" value="0" class="slider" id="range-slider">
 		</div>
+		<div style="display: flex; width: 30%; justify-content: center;">
+			<h3 id="forecastTime" style="color: white; font-family: system-ui;"></h3>
+		</div>
 	</div>
 	<div id="container">
 		<!-- Inner container that holds all images -->

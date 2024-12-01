@@ -1,4 +1,6 @@
 const innerContainer = document.getElementById("inner-container");
+const canvas = document.getElementById('canvas');
+const forecastTimeText = document.getElementById("forecastTime");
 let isDragging = false;
 let startX = 0, startY = 0;
 let cursorX = 0, cursorY = 0;
@@ -6,6 +8,9 @@ let imgX = 0, imgY = 0;
 let zoomLevel = 1;
 const zoomSpeed = 0.2;
 const moveSpeed = 10;
+// Define the resolution of the main image
+const desiredWidth = canvas.width = 3000;
+const desiredHeight = canvas.height = 1290;
 
 // Select all images inside the container
 const images = document.querySelectorAll('.image');
@@ -71,10 +76,10 @@ function getPixelValue() {
 	if ((x < 0 && x < canvas.width) || (y < 0 && y < canvas.height)) {
 		value = null;
 	} else {
-		value = rgbArray[y * canvas.width + x];
+		value = rgbArrayList[slider.value][y * canvas.width + x];
 	}
 
-	return value;
+	return Math.round(value * 100) / 100;
 
 }
 
@@ -173,7 +178,7 @@ function zoomContainer(zoomAmount, mouseX, mouseY) {
 
 
 function updateContainerTransform() {
-	const transformValue = `matrix(${zoomLevel}, 0, 0, ${zoomLevel}, ${imgX}, ${imgY})`;
+	const transformValue = `translate(${imgX}px, ${imgY}px) scale(${zoomLevel})`;
 	innerContainer.style.transform = transformValue;
 
 
@@ -188,14 +193,14 @@ function getTouchDistance(e) {
 // Prevent right-click context menu
 innerContainer.addEventListener('contextmenu', (e) => e.preventDefault());
 
-function determineDistance() {
+function determineDistance(canvasObj) {
 	const fullmapbbox = [-180, -90, 180, 90];
 	//get in model_extent.json
 	const forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 52.62870288555903];
 
 	// Map dimensions in pixels (you need to know these dimensions)
-	const mapPixelWidth = canvas.width;  // Same as image
-	const mapPixelHeight = canvas.width / 2; // /2 because of aspect ratio of platecarree
+	const mapPixelWidth = canvasObj.width;  // Same as image
+	const mapPixelHeight = canvasObj.width / 2; // /2 because of aspect ratio of platecarree
 
 	// Calculate the width and height of the full map and forecast in degrees
 	const lon_min_map = fullmapbbox[0];
@@ -241,10 +246,6 @@ function scaleImages() {
 	// Get all the images within the div
 	const images = innerContainer.querySelectorAll(('canvas'));
 	let loadedImagesCount = 0;
-
-	// Define the resolution of the main image
-	const desiredWidth = 3000;
-	const desiredHeight = 1290;
 
 	map.Width = desiredWidth
 	map.height = desiredWidth / 2; // /2 because of aspect ratio of platecarree

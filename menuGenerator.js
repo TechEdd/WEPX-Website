@@ -49,5 +49,10 @@ slider.addEventListener('input', () => {
         slider.value = maxValue;
     }
     updateSliderUI();
+    //change canvas
+    canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+    canvas.getContext('2d').drawImage(canvasList[slider.value].canvas, 0, 0, canvas.width, canvas.height);
+    determineDistance(canvasList[slider.value]);
+    forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["forecastTime"]);
 });
 updateSliderUI();

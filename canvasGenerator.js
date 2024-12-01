@@ -1,5 +1,4 @@
 let img;
-const canvas = document.getElementById('canvas');
 let rgbArray;
 
 const max24BitValue = 256 ** 3;
@@ -57,7 +56,7 @@ let colorTable = [
 
 
 
-
+rgbArrayList = []
 function getArray(imgSrc) {
 	console.time('getArray');
 
@@ -111,6 +110,7 @@ function getArray(imgSrc) {
 	console.timeEnd('getArray');
 
 	// Now rgbArray is a 2D array containing the 24-bit values for each pixel
+	rgbArrayList.push(rgbArray);
 	return rgbArray;
 
 }
@@ -125,10 +125,14 @@ function getColorForValue(value) {
 	return [0, 0, 0]; // Default to black if value is below the range
 }
 
+
+var canvasList = [];
 function convertToCanvas(imgSrc) {
 	rgbArray = getArray(imgSrc);
 	width = imgSrc.width;
 	height = imgSrc.height;
+
+	const canvas = document.createElement('canvas');
 
 	console.log(width, height)
 	canvas.width = width;
@@ -172,19 +176,45 @@ function convertToCanvas(imgSrc) {
 
 	// Put the image data on the canvas
 	ctx.putImageData(imageData, 0, 0);
+	canvasList.push(ctx);
 	console.timeEnd('convertToCanvas');
-	determineDistance();
+	forecastTimeText.innerHTML = epochToTimestamp(data["files"][0]["forecastTime"]);
 }
 
+function epochToTimestamp(epoch) {
+	const date = new Date(epoch * 1000); // Convert epoch to milliseconds
+	const year = date.getFullYear();
+	const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+	const day = String(date.getDate()).padStart(2, '0');
+	const hours = String(date.getHours()).padStart(2, '0');
+	const minutes = String(date.getMinutes()).padStart(2, '0');
+	return `${year}-${month}-${day} ${hours}:${minutes}`;
+}
 
 function downloadImage(imgsrc) {
-	//download image
-	img = new Image()
-	img.src = imgsrc;
-	img.onerror = function () {
-		console.error('Failed to load the image.');
-	};
-	img.onload = function () { convertToCanvas(img) };
+	new Promise(function (resolve, reject) {
+		//download image
+		let img = new Image()
+		img.src = imgsrc;
+		img.onerror = (error) => reject(`Failed to load image at ${url}`);
+		img.onload = function () {
+			convertToCanvas(img);
+			//if first image loaded
+			if (canvasList.length <= 1) {
+				canvas.getContext('2d').clearRect(0, 0, img.width, img.height);
+				canvas.getContext('2d').drawImage(canvasList[0].canvas, 0, 0, img.width, img.height);
+				determineDistance(canvasList[0].canvas);
+			}
+		};
+		
+	})
+
 }
 
-downloadImage("downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + data["files"][0]["file"]);
+async function preloadImages() {
+	for (let i = 0; i <= data["files"].length; i++){
+		await downloadImage("downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + data["files"][i]["file"]);
+	}
+}
+
+preloadImages();
