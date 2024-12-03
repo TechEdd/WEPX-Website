@@ -163,7 +163,7 @@ function convertToCanvas(imgSrc) {
 			imageData.data[i + 1] = g;   // Green
 			imageData.data[i + 2] = b;   // Blue
 
-			const nodataRGB;
+			let nodataRGB;
 			//if inverted colormap
 			if (variable != "CIN") {
 				nodataRGB = (r == 255 && g == 255 && b == 255)
