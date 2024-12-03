@@ -163,7 +163,14 @@ function convertToCanvas(imgSrc) {
 			imageData.data[i + 1] = g;   // Green
 			imageData.data[i + 2] = b;   // Blue
 
-			if (r == 0 && g == 0 && b == 0) {
+			const nodataRGB;
+			//if inverted colormap
+			if (variable != "CIN") {
+				nodataRGB = (r == 255 && g == 255 && b == 255)
+			} else {
+				nodataRGB = (r == 0 && g == 0 && b == 0)
+			}
+			if (nodataRGB) {
 				imageData.data[i + 3] = 0; // Alpha (fully opaque)
 			} else {
 				let alpha = Math.max(0, Math.min(255, ((r + g + b) / 3)) ** 2);
