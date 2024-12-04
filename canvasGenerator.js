@@ -145,10 +145,14 @@ function getArray(imgSrc) {
 			let r = data[index];       // Red channel (0-255)
 			let g = data[index + 1];   // Green channel (0-255)
 			let b = data[index + 2];   // Blue channel (0-255)
+			let a = data[index + 3];  // Aplha channel (0-255)
 
 			// Convert to 24-bit integer (RGB)
-			let intValue = (r * 256 ** 2) + (256 * g) + b;  // 24-bit integer (RGB)
-			let scaledValue = ((intValue / oldMax) * (maxValue - minValue)) + minValue;
+			let scaledValue = null;
+			if (a != 0) { 
+				let intValue = (r * 256 ** 2) + (256 * g) + b;  // 24-bit integer (RGB)
+				scaledValue = ((intValue / oldMax) * (maxValue - minValue)) + minValue;
+			}
 
 			rgbArray[y * width + x] = scaledValue;
 
@@ -218,9 +222,9 @@ function convertToCanvas(imgSrc) {
 			let nodataRGB;
 			//if inverted colormap
 			if (variable == "CIN") {
-				nodataRGB = (value == maxValue || value-1 == maxValue);
+				nodataRGB = (value == maxValue);
 			} else {
-				nodataRGB = (value == minValue || value+1 == minValue);
+				nodataRGB = (value == minValue);
 			}
 			if (nodataRGB) {
 				imageData.data[i + 3] = 0; // Alpha (transparent)
