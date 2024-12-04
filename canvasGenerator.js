@@ -54,6 +54,58 @@ let colorTable = [
 	{ value: 94, color: [1, 32, 32] }
 ];
 
+colorTable = rescaleColorTable(minValue, maxValue, colorTable);
+function rescaleColorTable(minValue, maxValue, colorTable) {
+	// Get the original range of values based on the colorTable length
+	const originalMin = 0; // The minimum value in the original table (can be adjusted if needed)
+	const originalMax = colorTable.length - 1; // The maximum value in the original table (based on its length)
+
+	// Rescale the colors based on the new minimum and maximum values
+	return colorTable.map((entry, index) => {
+		// Calculate the new value based on the index in the table
+		const rescaledValue = minValue + ((maxValue - minValue) * index) / (originalMax);
+
+		// Return a new object with the rescaled value and the same color
+		return {
+			value: rescaledValue,
+			color: entry.color
+		};
+	});
+}
+
+
+function drawColormap(colorTable) {
+	const canvas = document.getElementById("colormapCanvas");
+	const ctx = canvas.getContext("2d");
+	const width = canvas.width;
+	const height = canvas.height;
+
+	// Calculate the range of values
+	const minValue = Math.min(...colorTable.map(entry => entry.value));
+	const maxValue = Math.max(...colorTable.map(entry => entry.value));
+	const range = maxValue - minValue;
+
+	// Draw the colormap vertically
+	for (let i = 0; i < colorTable.length - 1; i++) {
+		const start = colorTable[i];
+		const end = colorTable[i + 1];
+
+		// Normalize start and end positions (invert vertically)
+		const startY = height - ((start.value - minValue) / range) * height;
+		const endY = height - ((end.value - minValue) / range) * height;
+
+		// Create a gradient for smooth transitions
+		const gradient = ctx.createLinearGradient(0, startY, 0, endY);
+		gradient.addColorStop(0, `rgb(${start.color.join(",")})`);
+		gradient.addColorStop(1, `rgb(${end.color.join(",")})`);
+
+		// Fill the corresponding range with the gradient
+		ctx.fillStyle = gradient;
+		ctx.fillRect(0, endY, width, startY - endY);
+	}
+	document.getElementById("colormapVariable").textContent = variable;
+}
+drawColormap(colorTable);
 
 
 rgbArrayList = []
@@ -165,16 +217,17 @@ function convertToCanvas(imgSrc) {
 
 			let nodataRGB;
 			//if inverted colormap
-			if (variable != "CIN") {
-				nodataRGB = (r == 255 && g == 255 && b == 255)
+			if (variable == "CIN") {
+				nodataRGB = (value == maxValue || value-1 == maxValue);
 			} else {
-				nodataRGB = (r == 0 && g == 0 && b == 0)
+				nodataRGB = (value == minValue || value+1 == minValue);
 			}
 			if (nodataRGB) {
-				imageData.data[i + 3] = 0; // Alpha (fully opaque)
+				imageData.data[i + 3] = 0; // Alpha (transparent)
+				
 			} else {
-				let alpha = Math.max(0, Math.min(255, ((r + g + b) / 3)) ** 2);
-				imageData.data[i + 3] = alpha;
+				//imageData.data[i + 3] = Math.max(0, Math.min(255, ((r + g + b) / 3)) ** 2);
+				imageData.data[i + 3] = 255;
 			}
 
 			i += 4; // Move to the next pixel in the imageData array
