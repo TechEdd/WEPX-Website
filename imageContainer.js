@@ -78,8 +78,12 @@ function getPixelValue() {
 	} else {
 		value = rgbArrayList[slider.value][y * canvas.width + x];
 	}
-
-	return Math.round(value * 100) / 100;
+	
+	if (value != null) {
+		return Math.round((value * 100) / 100);
+	} else {
+		return null;
+	};
 
 }
 
