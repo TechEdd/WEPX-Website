@@ -54,6 +54,9 @@ let colorTable = [
 	{ value: 94, color: [1, 32, 32] }
 ];
 
+var rgbArrayList = [];
+var canvasList = [];
+
 colorTable = rescaleColorTable(minValue, maxValue, colorTable);
 function rescaleColorTable(minValue, maxValue, colorTable) {
 	// Get the original range of values based on the colorTable length
@@ -107,178 +110,114 @@ function drawColormap(colorTable) {
 }
 drawColormap(colorTable);
 
+async function mapColorsWithWorker(imageData, width, height, minValue, maxValue, variable, colorTable) {
+	return new Promise((resolve, reject) => {
+		const worker = new Worker("arrayWorkers.js"); // Create the worker
 
-rgbArrayList = []
-function getArray(imgSrc) {
-	console.time('getArray');
+        worker.onmessage = (e) => {
+            let { rgbArray, imageDataArray } = e.data; // Received processed RGBA array
+			rgbArray = new Float32Array(rgbArray);
+			imageDataArray = new Uint8ClampedArray(imageDataArray);
+			resolve({rgbArray, imageDataArray}); // Resolve with the imageDataArray
+            worker.terminate(); // Clean up the worker
+        };
 
-	// Create a canvas element to draw the image
-	const canvas = document.createElement("canvas");
-	const ctx = canvas.getContext("2d");
+        worker.onerror = (err) => {
+            console.error("Worker encountered an error:", err);
+            reject(err); // Reject on error
+            worker.terminate(); // Clean up the worker
+        };
 
-	// Set canvas size to image size
-	canvas.width = imgSrc.width;
-	canvas.height = imgSrc.height;
-
-	// Draw the image onto the canvas
-	ctx.drawImage(imgSrc, 0, 0);
-
-	// Get the image data (RGBA values)
-	const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-	const data = imageData.data;  // The RGB array for the image
-
-	// Create a 2D array to hold 24-bit values
-	const width = canvas.width;
-	const height = canvas.height;
-	let rgbArray = new Float32Array(height * width); // Pre-allocate the array
-
-	let oldMin = 0;
-	let oldMax = 16777215;
-
-	// Loop through the image data and convert RGBA to 24-bit RGB values
-	let y = 0;
-	while (y < height) {
-		let row = [];
-		let x = 0;
-		while (x < width) {
-			const index = (y * width + x) * 4;
-			let r = data[index];       // Red channel (0-255)
-			let g = data[index + 1];   // Green channel (0-255)
-			let b = data[index + 2];   // Blue channel (0-255)
-			let a = data[index + 3];  // Aplha channel (0-255)
-
-			// Convert to 24-bit integer (RGB)
-			let scaledValue = null;
-			if (a != 0) { 
-				let intValue = (r * 256 ** 2) + (256 * g) + b;  // 24-bit integer (RGB)
-				scaledValue = ((intValue / oldMax) * (maxValue - minValue)) + minValue;
-			}
-
-			rgbArray[y * width + x] = scaledValue;
-
-
-			x++; // Increment x for the inner loop
-		}
-
-		y++; // Increment y for the outer loop
-	}
-
-	console.timeEnd('getArray');
-
-	// Now rgbArray is a 2D array containing the 24-bit values for each pixel
-	rgbArrayList.push(rgbArray);
-	return rgbArray;
-
+        // Post data to the worker
+        worker.postMessage({
+            imageData, // Raw RGBA data from the canvas
+            width, // Width of the image
+            height, // Height of the image
+            minValue, // Minimum value for scaling
+            maxValue, // Maximum value for scaling
+            variable, // Variable name (e.g., 'CIN')
+            colorTable // Color mapping table
+        });
+    });
 }
 
-// Function to get the color for a given value
-function getColorForValue(value) {
-	for (let i = colorTable.length - 1; i >= 0; i--) {
-		if (value >= colorTable[i].value) {
-			return colorTable[i].color;
-		}
-	}
-	return [0, 0, 0]; // Default to black if value is below the range
-}
-
-
-var canvasList = [];
-function convertToCanvas(imgSrc) {
-	rgbArray = getArray(imgSrc);
-	width = imgSrc.width;
-	height = imgSrc.height;
-
-	const canvas = document.createElement('canvas');
-
-	console.log(width, height)
-	canvas.width = width;
-	canvas.height = height;
-
-
-	console.time('convertToCanvas');
-	const ctx = canvas.getContext('2d');
-
-	// Create an ImageData object
-	const imageData = ctx.createImageData(width, height);
-
-	// Loop through the array and set pixel values
-	let i = 0;
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			// Get the 1D index for the 2D position in rgbClampedArray
-			const rgbIndex = y * width + x;
-
-			// Retrieve the scaled value
-			const value = rgbArray[rgbIndex];
-
-			// Map the value to an RGB color
-			let [r, g, b] = getColorForValue(value);
-
-			// Assign colors to the imageData array
-			imageData.data[i] = r;       // Red
-			imageData.data[i + 1] = g;   // Green
-			imageData.data[i + 2] = b;   // Blue
-
-			let nodataRGB;
-			//if inverted colormap
-			if (variable == "CIN") {
-				nodataRGB = (value == maxValue);
-			} else {
-				nodataRGB = (value == minValue);
-			}
-			if (nodataRGB) {
-				imageData.data[i + 3] = 0; // Alpha (transparent)
-				
-			} else {
-				//imageData.data[i + 3] = Math.max(0, Math.min(255, ((r + g + b) / 3)) ** 2);
-				imageData.data[i + 3] = 255;
-			}
-
-			i += 4; // Move to the next pixel in the imageData array
-		}
-	}
-
-	// Put the image data on the canvas
-	ctx.putImageData(imageData, 0, 0);
-	canvasList.push(ctx);
-	console.timeEnd('convertToCanvas');
-	forecastTimeText.innerHTML = epochToTimestamp(data["files"][0]["forecastTime"]);
-}
-
-function epochToTimestamp(epoch) {
-	const date = new Date(epoch * 1000); // Convert epoch to milliseconds
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-	const day = String(date.getDate()).padStart(2, '0');
-	const hours = String(date.getHours()).padStart(2, '0');
-	const minutes = String(date.getMinutes()).padStart(2, '0');
-	return `${year}-${month}-${day} ${hours}:${minutes}`;
-}
-
-function downloadImage(imgsrc) {
-	new Promise(function (resolve, reject) {
-		//download image
-		let img = new Image()
-		img.src = imgsrc;
-		img.onerror = (error) => reject(`Failed to load image at ${url}`);
-		img.onload = function () {
-			convertToCanvas(img);
-			//if first image loaded
-			if (canvasList.length <= 1) {
-				canvas.getContext('2d').clearRect(0, 0, img.width, img.height);
-				canvas.getContext('2d').drawImage(canvasList[0].canvas, 0, 0, img.width, img.height);
-				determineDistance(canvasList[0].canvas);
-			}
-		};
+async function convertToCanvasAsync(imgSrc) {
+    try {
+        // Step 1: Create a canvas and get raw RGBA data
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = imgSrc.width;
+        canvas.height = imgSrc.height;
+        ctx.drawImage(imgSrc, 0, 0);
 		
-	})
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
+        // Step 2: Use the worker to process the RGBA data and apply the color mapping
+        const { rgbArray, imageDataArray } = await mapColorsWithWorker(
+            imageData.data, // Raw image data
+            canvas.width,
+            canvas.height,
+            minValue,
+            maxValue,
+            variable,
+            colorTable
+        );
+
+        // Step 3: Create ImageData and draw it back on the canvas
+        const processedImageData = new ImageData(
+            new Uint8ClampedArray(imageDataArray),
+            canvas.width,
+            canvas.height
+        );
+        ctx.putImageData(processedImageData, 0, 0);
+
+        // Step 4: Return the canvas
+		return {rgbArray, canvas};
+    } catch (error) {
+        console.error("Error in convertToCanvasAsync:", error);
+        throw error;
+    }
 }
 
-async function preloadImages() {
-	for (let i = 0; i <= data["files"].length; i++){
-		await downloadImage("downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + data["files"][i]["file"]);
-	}
+//squential preload
+async function preloadImagesAsync() {
+    try {
+        for (const file of data["files"]) {
+            // Step 1: Load the image
+            const imgSrc = "downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + file["file"];
+			const img = await loadImage(imgSrc); // Helper function to load images asynchronously
+			
+			
+			// Step 2: Process the image with convertToCanvasAsync
+			console.time(imgSrc);
+            const { rgbArray, canvas } = await convertToCanvasAsync(img);
+			console.timeEnd(imgSrc);
+            // Step 3: Add to canvasList and rgbArrayList
+            canvasList.push(canvas);
+			rgbArrayList.push(rgbArray);
+
+            // Optional: Add RGB array (if needed elsewhere in your app)
+            // const rgbArray = ... extract or store it here if required
+
+            // Step 4: Update the main canvas if this is the first image
+            slider.dispatchEvent(new Event("input"));
+		}
+        console.log("All images preloaded successfully");
+    } catch (error) {
+        console.error("Error in preloadImagesAsync:", error);
+    }
 }
 
-preloadImages();
+// Helper function to load an image asynchronously
+function loadImage(src) {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = (err) => reject(`Failed to load image at ${src}: ${err}`);
+		img.src = src;
+    });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+	preloadImagesAsync();
+});

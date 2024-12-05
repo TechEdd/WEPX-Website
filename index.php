@@ -227,10 +227,10 @@
 	let variable = "<?php echo $_GET['variable'] ?? 'CAPE'; ?>";
 	let level = "<?php echo $_GET['level'] ?? 'all_lev'; ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
-	let run = data["run"]*1000;
-	let runNb = new Date(parseInt(run)).getUTCHours();
-	let minValue = data["vmin"];
-	let maxValue = data["vmax"];
+	var run = data["run"]*1000;
+	var runNb = new Date(parseInt(run)).getUTCHours();
+	var minValue = data["vmin"];
+	var maxValue = data["vmax"];
 
 	//inverted colormaps
 	if (variable!="CIN"){
@@ -263,6 +263,10 @@
 	</div>
 	<div id="container">
 		<!-- Inner container that holds all images -->
+		<div id="colormapDiv" style="position: absolute; width=50px; right: 1vw; bottom: 12vh; z-index:150; background: #b0b0b0;">
+			<p id="colormapVariable" style="TEXT-ALIGN: center; font-family: system-ui; margin: 5px;"></p>
+			<canvas id="colormapCanvas" width="10" height="100" style="border: 1px solid black; right: 5px; display: flex; justify-self: flex-end; margin: 10px;"></canvas>
+		</div>
 		<div id="tooltip" class="tooltip"></div>
 		<div id="inner-container">
 			<!-- Add multiple images of varying sizes -->

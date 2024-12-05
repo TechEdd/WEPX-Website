@@ -1,4 +1,5 @@
 const innerContainer = document.getElementById("inner-container");
+const slider = document.getElementById('range-slider');
 const canvas = document.getElementById('canvas');
 const forecastTimeText = document.getElementById("forecastTime");
 let isDragging = false;
@@ -59,7 +60,11 @@ innerContainer.addEventListener('mousemove', (e) => {
 
 });
 
-function getPixelValue() {
+function getPixelValue(listValue) {
+	//not explicitly sent, si checks slider value for image index
+	if (listValue==null){
+		listValue = slider.value
+	}
 
 	//get pixel index
 	const rect = canvas.getBoundingClientRect();
@@ -76,11 +81,12 @@ function getPixelValue() {
 	if ((x < 0 && x < canvas.width) || (y < 0 && y < canvas.height)) {
 		value = null;
 	} else {
-		value = rgbArrayList[slider.value][y * canvas.width + x];
+		const convertedArray = new Float32Array(rgbArrayList[listValue]);
+		value = convertedArray[y * canvas.width + x];
 	}
 	
-	if (value != null) {
-		return Math.round((value * 100) / 100);
+	if (value != null || !isNaN(value)) {
+		return value?.toFixed(2);
 	} else {
 		return null;
 	};
@@ -103,10 +109,14 @@ document.addEventListener('keydown', (e) => {
 			imgY += moveSpeed;
 			break;
 		case 'ArrowLeft': // Move left
-			imgX -= moveSpeed;
+			slider.value--;
+			tooltip.textContent = getPixelValue(slider.value);
+			slider.dispatchEvent(new Event("input"));
 			break;
 		case 'ArrowRight': // Move right
-			imgX += moveSpeed;
+			slider.value++;
+			tooltip.textContent = getPixelValue(slider.value);
+			slider.dispatchEvent(new Event("input"));
 			break;
 	}
 	updateContainerTransform();
