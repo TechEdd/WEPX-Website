@@ -1,12 +1,15 @@
 const innerContainer = document.getElementById("inner-container");
+const container = document.getElementById("container");
 const slider = document.getElementById('range-slider');
 const canvas = document.getElementById('canvas');
 const forecastTimeText = document.getElementById("forecastTime");
+let animationFrameId;
 let isDragging = false;
 let startX = 0, startY = 0;
 let cursorX = 0, cursorY = 0;
 let imgX = 0, imgY = 0;
 let zoomLevel = 1;
+let isLeftPressed = false;
 const zoomSpeed = 0.2;
 const moveSpeed = 10;
 // Define the resolution of the main image
@@ -23,38 +26,44 @@ const imageScales = {
 };
 
 // Prevent default drag and context menu on the container
-innerContainer.addEventListener('mousedown', (e) => {
+container.addEventListener('mousedown', (e) => {
 	e.preventDefault();
-	isDragging = true;
+	isDragging = isLeftPressed = true;
 	startX = e.clientX - imgX;
 	startY = e.clientY - imgY;
 	innerContainer.classList.add("dragging");
 });
 
-innerContainer.addEventListener('mouseup', () => {
-	isDragging = false;
+container.addEventListener('mouseup', () => {
+	isDragging = isLeftPressed = false;
 	innerContainer.classList.remove("dragging");
 });
 
-innerContainer.addEventListener('mouseleave', () => {
-	isDragging = false;
+container.addEventListener('mouseleave', () => {
+	isDragging = isLeftPressed = false;
 	innerContainer.classList.remove("dragging");
 	tooltip.style.display = 'none'; // Hide the tooltip
 });
 
-innerContainer.addEventListener('mousemove', (e) => {
-	if (isDragging) {
-		imgX = e.clientX - startX;
-		imgY = e.clientY - startY;
-		updateContainerTransform();
+container.addEventListener('mousemove', (e) => {
+	// Cancel the previous animation frame if one is already scheduled
+	if (animationFrameId) {
+		cancelAnimationFrame(animationFrameId);
 	}
+	// Schedule the next animation frame
+	animationFrameId = requestAnimationFrame(() => {
+		if (isDragging) {
+			imgX = e.clientX - startX;
+			imgY = e.clientY - startY;
+			updateContainerTransform();
+		}
+	});
+	
 	cursorX = e.clientX;
 	cursorY = e.clientY;
 
-	const tooltipWidth = tooltip.offsetWidth;
-
 	tooltip.textContent = getPixelValue();
-	tooltip.style.left = `${event.pageX - tooltipWidth / 2}px`; // Center horizontally
+	tooltip.style.left = `${event.pageX - tooltip.offsetWidth / 2}px`; // Center horizontally
 	tooltip.style.top = `${event.pageY - 40}px`; // Center vertically
 	tooltip.style.display = 'block';             // Make the tooltip visible
 
@@ -81,8 +90,7 @@ function getPixelValue(listValue) {
 	if ((x < 0 && x < canvas.width) || (y < 0 && y < canvas.height)) {
 		value = null;
 	} else {
-		const convertedArray = new Float32Array(rgbArrayList[listValue]);
-		value = convertedArray[y * canvas.width + x];
+		value = rgbArrayList[listValue][y * canvas.width + x];
 	}
 	
 	if (value != null || !isNaN(value)) {
@@ -167,7 +175,7 @@ innerContainer.addEventListener('touchend', () => {
 });
 
 
-function zoomContainer(zoomAmount, mouseX, mouseY) {
+async function zoomContainer(zoomAmount, mouseX, mouseY) {
 	const prevZoomLevel = zoomLevel;
 	if (zoomLevel < 1) {
 		zoomAmount = zoomAmount / 4; //slower on unzoom
@@ -191,14 +199,13 @@ function zoomContainer(zoomAmount, mouseX, mouseY) {
 }
 
 
-function updateContainerTransform() {
+async function updateContainerTransform() {
 	const transformValue = `translate(${imgX}px, ${imgY}px) scale(${zoomLevel})`;
 	innerContainer.style.transform = transformValue;
 
-
 }
 
-function getTouchDistance(e) {
+async function getTouchDistance(e) {
 	const dx = e.touches[0].clientX - e.touches[1].clientX;
 	const dy = e.touches[0].clientY - e.touches[1].clientY;
 	return Math.sqrt(dx * dx + dy * dy);
@@ -207,6 +214,7 @@ function getTouchDistance(e) {
 // Prevent right-click context menu
 innerContainer.addEventListener('contextmenu', (e) => e.preventDefault());
 
+//move image to correct lat lon
 function determineDistance(canvasObj) {
 	const fullmapbbox = [-180, -90, 180, 90];
 	//get in model_extent.json
@@ -244,11 +252,11 @@ function determineDistance(canvasObj) {
 	const forecastPixelHeight = heightForecast * pixelsPerLat;
 
 	// Calculate the offset of the forecast image relative to the full map
-	startX = (lon_min_forecast - lon_min_map) * pixelsPerLon;
-	startY = (lat_max_map - lat_max_forecast) * pixelsPerLat; // Note: y-axis is inverted in most graphics
+	const startX = (lon_min_forecast - lon_min_map) * pixelsPerLon;
+	const startY = (lat_max_map - lat_max_forecast) * pixelsPerLat; // Note: y-axis is inverted in most graphics
 
 	// Apply the calculated size and position to the forecast image
-	const forecastImage = document.getElementById('forecast'); // Your forecast image element
+	const forecastImage = document.getElementById('forecast');
 	canvas.style.width = `${forecastPixelWidth}px`;
 	canvas.style.height = `${forecastPixelHeight}px`;
 	canvas.style.left = `${startX}px`;
