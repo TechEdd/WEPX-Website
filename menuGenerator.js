@@ -118,17 +118,20 @@ slider.addEventListener('input', () => {
     updateSliderUI();
     
 	//temporarily stopping dragging preventing resetting
-	isDragging = false; 
-	updateContainerTransform();
+	if(zoomMode=="map"){
+		isDragging = false; 
+		updateContainerTransform();
+	}
 	
 	//change canvas
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     canvas.getContext('2d').drawImage(canvasList[slider.value], 0, 0, canvas.width, canvas.height);
     determineDistance(canvasList[slider.value]);
     forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["forecastTime"]);
-	
-	if(isLeftPressed){
-		isDragging = true;
+	if(zoomMode=="map"){
+		if(isLeftPressed){
+			isDragging = true;
+		}
 	}
 });
 updateSliderUI();
