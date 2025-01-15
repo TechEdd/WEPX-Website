@@ -3,15 +3,24 @@ const container = document.getElementById("container");
 const slider = document.getElementById('range-slider');
 const canvas = document.getElementById('canvas');
 const forecastTimeText = document.getElementById("forecastTime");
+const map = document.getElementById("map");
 let animationFrameId;
 let isDragging = false;
+let isSelecting = false;
+let isLeftPressed = false;
+let isControlPressed = false;
 let startX = 0, startY = 0;
 let cursorX = 0, cursorY = 0;
 let imgX = 0, imgY = 0;
+let endX = 0, endY = 0;
 let zoomLevel = 1;
-let isLeftPressed = false;
 const zoomSpeed = 0.2;
 const moveSpeed = 10;
+const fullmapbbox = [-180, -90, 180, 90];
+//futurely get in model_extent.json
+let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 52.62870288555903];
+let rectBBox = null;
+
 // Define the resolution of the main image
 const desiredWidth = canvas.width = 3000;
 const desiredHeight = canvas.height = 1290;
@@ -27,16 +36,30 @@ const imageScales = {
 
 // Prevent default drag and context menu on the container
 container.addEventListener('mousedown', (e) => {
-	e.preventDefault();
-	isDragging = isLeftPressed = true;
-	startX = e.clientX - imgX;
-	startY = e.clientY - imgY;
-	innerContainer.classList.add("dragging");
+    if (isControlPressed) {
+        isSelecting = true;
+		startX = e.clientX;
+		startY = e.clientY;
+        rectBBox = null; // Reset previous bbox
+    } else {
+        // Handle dragging as usual
+        e.preventDefault();
+        isDragging = isLeftPressed = true;
+        startX = e.clientX - imgX;
+        startY = e.clientY - imgY;
+        innerContainer.classList.add("dragging");
+    }
 });
 
 container.addEventListener('mouseup', () => {
-	isDragging = isLeftPressed = false;
-	innerContainer.classList.remove("dragging");
+	if (isSelecting) {
+		isSelecting = false;
+		rectBBox.remove();
+        calculateBBox();
+    } else {
+        isDragging = isLeftPressed = false;
+        innerContainer.classList.remove("dragging");
+    }
 });
 
 container.addEventListener('mouseleave', () => {
@@ -46,6 +69,13 @@ container.addEventListener('mouseleave', () => {
 });
 
 container.addEventListener('mousemove', (e) => {
+	
+	if (isSelecting) {
+        endX = e.clientX;
+        endY = e.clientY;
+        drawSelectionRectangle(startX, startY, endX, endY);
+    }
+	
 	// Cancel the previous animation frame if one is already scheduled
 	if (animationFrameId) {
 		cancelAnimationFrame(animationFrameId);
@@ -63,11 +93,106 @@ container.addEventListener('mousemove', (e) => {
 	cursorY = e.clientY;
 
 	tooltip.textContent = getPixelValue();
-	tooltip.style.left = `${event.pageX - tooltip.offsetWidth / 2}px`; // Center horizontally
-	tooltip.style.top = `${event.pageY - 40}px`; // Center vertically
+	tooltip.style.left = `${e.pageX - tooltip.offsetWidth / 2}px`; // Center horizontally
+	tooltip.style.top = `${e.pageY - 40}px`; // Center vertically
 	tooltip.style.display = 'block';             // Make the tooltip visible
 
 });
+
+//Selecting cropped map
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'Control') {
+        isControlPressed = true;
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'Control') {
+        isControlPressed = false;
+        if (isSelecting) {
+            // On key release, finalize the selection and calculate bbox lat/lon
+            calculateBBox();
+        }
+        isSelecting = false; // Reset the selection flag
+    }
+});
+
+
+
+// Draw the selection rectangle (temporary visual feedback)
+function drawSelectionRectangle(startX, startY, endX, endY) {
+    const rectWidth = endX - startX;
+    const rectHeight = endY - startY;
+
+    if (!rectBBox) {
+        rectBBox = document.createElement('div');
+        rectBBox.style.position = 'absolute';
+        rectBBox.style.border = '2px dashed rgba(0, 0, 255, 0.6)';
+        container.appendChild(rectBBox);
+    }
+    rectBBox.style.left = `${startX}px`;
+    rectBBox.style.top = `${startY}px`;
+    rectBBox.style.width = `${Math.abs(rectWidth)}px`;
+    rectBBox.style.height = `${Math.abs(rectHeight)}px`;
+}
+
+// Function to calculate the bbox lat/lon from the selected rectangle
+function calculateBBox() {
+    const lonMin = getLonFromPixel(startX);
+    const latMax = getLatFromPixel(startY);
+    const lonMax = getLonFromPixel(endX);
+    const latMin = getLatFromPixel(endY);
+    
+     console.log(`Selected Bbox: lonMin: ${lonMin}, latMin: ${latMin}, lonMax: ${lonMax}, latMax: ${latMax}`);
+
+	const newUrl = new URL('zoomed.php', window.location.origin);
+	newUrl.search = new URLSearchParams({
+		request,
+		model,
+		variable,
+		level,
+		xmin: lonMin,
+		xmax: lonMax,
+		ymin: latMin,
+		ymax: latMax,
+	}).toString();
+
+	// Refresh the page with the new URL
+	window.location.href = newUrl.toString();
+}
+
+// Convert pixel coordinates to longitude based on the canvas size and fullmapbbox
+function getLonFromPixel(pixelX) {
+	const rect = map.getBoundingClientRect(); // Get canvas dimensions on the screen
+	const zoomingFactorX = map.width / rect.width; // Account for zoom/scaling
+	const [mapLonMin, , mapLonMax] = fullmapbbox; // Longitude bounds
+	const mapWidthInDegrees = mapLonMax - mapLonMin;
+
+	// Calculate the true X coordinate relative to the canvas' original size
+	const x = (pixelX - rect.left) * zoomingFactorX;
+
+	// Map the X coordinate to longitude
+	return (x / map.width) * mapWidthInDegrees + mapLonMin;
+}
+
+// Convert pixel coordinates to latitude based on the canvas size and fullmapbbox
+function getLatFromPixel(pixelY) {
+	const rect = map.getBoundingClientRect(); // Get canvas dimensions on the screen
+	const zoomingFactorY = map.height / rect.height; // Account for zoom/scaling
+	const [, mapLatMin, , mapLatMax] = fullmapbbox; // Latitude bounds
+	const mapHeightInDegrees = mapLatMax - mapLatMin;
+
+	// Calculate the true Y coordinate relative to the canvas' original size
+	const y = (pixelY - rect.top) * zoomingFactorY;
+
+	// Map the Y coordinate to latitude (note: invert Y-axis)
+	return (1 - (y / map.height)) * mapHeightInDegrees + mapLatMin;
+}
+
+
+
+
+
 
 function getPixelValue(listValue) {
 	//not explicitly sent, si checks slider value for image index
@@ -216,9 +341,6 @@ innerContainer.addEventListener('contextmenu', (e) => e.preventDefault());
 
 //move image to correct lat lon
 function determineDistance(canvasObj) {
-	const fullmapbbox = [-180, -90, 180, 90];
-	//get in model_extent.json
-	const forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 52.62870288555903];
 
 	// Map dimensions in pixels (you need to know these dimensions)
 	const mapPixelWidth = canvasObj.width;  // Same as image
@@ -256,7 +378,6 @@ function determineDistance(canvasObj) {
 	const startY = (lat_max_map - lat_max_forecast) * pixelsPerLat; // Note: y-axis is inverted in most graphics
 
 	// Apply the calculated size and position to the forecast image
-	const forecastImage = document.getElementById('forecast');
 	canvas.style.width = `${forecastPixelWidth}px`;
 	canvas.style.height = `${forecastPixelHeight}px`;
 	canvas.style.left = `${startX}px`;
