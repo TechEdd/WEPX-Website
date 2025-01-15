@@ -9,8 +9,12 @@
             margin: 0;
             overflow: hidden;
             user-select: none;
-			will-change: transform;
         }
+		
+		img {
+			will-change: transform;
+		}
+		
         #container {
             width: 100vw;
             height: 100vh;
@@ -56,69 +60,6 @@
 			text-align: center;
 		}	
 		
-		    /* Container for dropdown menu */
-		.dropdown-container 
-		  border: 1px solid #ccc;
-		  padding: 10px;
-		  position: relative;
-		}
-
-		/* Button to toggle main dropdown */
-		.dropdown-btn {
-		  background-color: #4CAF50;
-		  color: white;
-		  padding: 12px;
-		  font-size: 16px;
-		  border: none;
-		  width: 100%;
-		  cursor: pointer;
-		  text-align: left;
-		}
-
-		/* Dropdown content (initially hidden) */
-		.dropdown-content {
-		  display: none;
-		  background-color: #f9f9f9;
-		  border: 1px solid #ccc;
-		  width: 100%;
-		  box-sizing: border-box;
-		}
-
-		/* Links inside dropdown */
-		.dropdown-content a {
-		  display: block;
-		  padding: 10px;
-		  text-decoration: none;
-		  color: black;
-		  cursor: pointer;
-		  width: 100%;
-		  box-sizing: border-box;
-		}
-
-		/* Change link color on hover */
-		.dropdown-content a:hover {
-		  background-color: #f1f1f1;
-		}
-
-		/* Sub-dropdown styling */
-		.nested-dropdown-content {
-		  display: none;
-		  padding-left: 20px;
-		}
-		
-		/* Expandable sections with an arrow indicator */
-		.expandable {
-		  cursor: pointer;
-		}
-
-		.arrow {
-		  float: right;
-		}
-
-		/* Rotates the arrow when the sub-menu is open */
-		.open .arrow {
-		  transform: rotate(90deg);
-		}
 		
 		canvas {
 		  image-rendering: pixelated;
@@ -152,7 +93,6 @@
 
         .slider-container {
             position: relative;
-            width: 70%;
             height: 100%;
             display: flex;
             align-items: center;
@@ -213,6 +153,78 @@
             z-index: 1;
         }
 
+		/* menu */
+		
+		   /* Container for dropdown menu */
+		.dropdown-container {
+		  position: relative;
+		}
+
+		/* Button to toggle main dropdown */
+		.dropdown-btn {
+		  background-color: #4CAF50;
+		  color: white;
+		  padding: 12px;
+		  font-size: 16px;
+		  border: none;
+		  width: 100%;
+		  cursor: pointer;
+		  text-align: left;
+		}
+
+		/* Dropdown content (initially hidden) */
+		.dropdown-content {
+		  display: none;
+		  background-color: transparent;
+		  width: 100%;
+		  box-sizing: border-box;
+		  color: white;
+		  padding: 2px;
+		  user-select: none;
+		  -webkit-user-select: none; /* Safari */        
+		  -moz-user-select: none; /* Firefox */
+		  -ms-user-select: none; /* IE10+/Edge */
+		  font-family: system-ui;
+		}
+
+		/* Links inside dropdown */
+		.dropdown-content a {
+		  display: block;
+		  padding: 5px;
+		  text-decoration: none;
+		  color: white;
+		  cursor: pointer;
+		  width: 100%;
+		  box-sizing: border-box;
+		}
+
+		/* Change link color on hover */
+		.dropdown-content a:hover {
+		  background-color: #f1f1f1;
+		}
+
+		/* Sub-dropdown styling */
+		.nested-dropdown-content {
+		  display: none;
+		  padding-left: 20px;
+		}
+		
+		/* Expandable sections with an arrow indicator */
+		.expandable {
+		  cursor: pointer;
+		  padding: 2px;
+		}
+
+		.arrow {
+		  float: right;
+		}
+
+		/* Rotates the arrow when the sub-menu is open */
+		.open .arrow {
+		  transform: rotate(90deg);
+		}
+	
+
 		
     </style>
 </head>
@@ -222,16 +234,41 @@
 		document.getElementById("map").width = document.getElementById("canvas").width;
 		document.getElementById("map").height= document.getElementById("canvas").height;
 	}
+	let zoomMode = "map";
 	let request = "<?php echo $_GET['request'] ?? 'model'; ?>";
 	let model = "<?php echo $_GET['model'] ?? 'HRRR'; ?>";
-	let variable = "<?php echo $_GET['variable'] ?? 'CAPE'; ?>";
+	let variable = "<?php $variable = $_GET['variable'] ?? 'CAPE'; echo $variable; ?>";
 	let level = "<?php echo $_GET['level'] ?? 'all_lev'; ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
 	var run = data["run"]*1000;
 	var runNb = new Date(parseInt(run)).getUTCHours();
 	var minValue = data["vmin"];
 	var maxValue = data["vmax"];
+	//let isInvertedColormap = (variable === "CIN" || variable === "SBT124" || minValue>maxValue);
+	let isInvertedColormap = false;
+	let colorTable = <?php
+		if ($variable) {
+			// Sanitize the variable to prevent directory traversal attacks
+			$safeVariable = basename($variable);
 
+			// Construct the file path
+			$filePath = "colormaps/" . $safeVariable . ".txt";
+
+			// Check if the file exists
+			if (file_exists($filePath)) {
+				// Read and echo the file contents
+				include($filePath);
+			} else {
+				// Handle the case where the file does not exist
+				echo "Error: File not found.";
+			}
+		} else {
+			// Handle the case where 'variable' is not provided
+			echo "Error: No variable provided.";
+		}
+	
+	?>
+	
 	//inverted colormaps
 	if (variable!="CIN"){
 		nodata = data["vmin"];
@@ -247,17 +284,29 @@
 			WEPX Weather Toolkit
 		</h1>
 		
-		<iframe src="dropdownmenu.html" scrolling="no" frameborder="0" seamless></iframe>
+		<?php include("dropdownmenu.html")?>
+		<?php include("HRRRmenu.html")?>
 		
 	</div>
 	<div id="timeline_control">
-		<div class="slider-container">
+		<div id="animateButtonDiv" style="width: 5%; display: flex; justify-content: center;">
+			<button id="animateButton" style="border: none; background: transparent; cursor: pointer; padding: 10px; margin: 5px;">
+				<svg class="play-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<polygon points="5 3, 19 12, 5 21"></polygon>
+				</svg>
+				<svg class="pause-icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+					<rect x="6" y="4" width="4" height="16"></rect>
+					<rect x="14" y="4" width="4" height="16"></rect>
+				</svg>
+			</button>
+		</div>
+		<div class="slider-container" style="width: 70%;">
 			<div class="track"></div>
 			<div class="fill-left"></div>
 			<div class="unavailable-rectangle"></div>
 			<input type="range" min="0" max="48" value="0" class="slider" id="range-slider">
 		</div>
-		<div style="display: flex; width: 30%; justify-content: center;">
+		<div style="display: flex; width: 20%; justify-content: center;">
 			<h3 id="forecastTime" style="color: white; font-family: system-ui;"></h3>
 		</div>
 	</div>
@@ -275,10 +324,9 @@
 
 		</div>
 	</div>
-
-	<script src="imageContainer.js"></script>
-	<script src="canvasGenerator.js"></script>
-	<script src="menuGenerator.js"></script>
 	
 </body>
 </html>
+<script src="imageContainer.js"></script>
+<script src="canvasGenerator.js"></script>
+<script src="menuGenerator.js"></script>
