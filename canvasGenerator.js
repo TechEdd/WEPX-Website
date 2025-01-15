@@ -101,19 +101,19 @@ async function mapColorsWithWorker(imageData, width, height, minValue, maxValue,
 async function convertToCanvasAsync(imgSrc) {
     try {
         // Step 1: Create a canvas and get raw RGBA data
-        const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-        canvas.width = imgSrc.width;
-        canvas.height = imgSrc.height;
+        const newCanvas = document.createElement("canvas");
+		const ctx = newCanvas.getContext("2d");
+        canvas.width = newCanvas.width = imgSrc.width;
+		canvas.height = newCanvas.height = imgSrc.height;
         ctx.drawImage(imgSrc, 0, 0);
 		
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		const imageData = ctx.getImageData(0, 0, newCanvas.width, newCanvas.height);
 
         // Step 2: Use the worker to process the RGBA data and apply the color mapping
         const { rgbArray, imageDataArray } = await mapColorsWithWorker(
             imageData.data, // Raw image data
-            canvas.width,
-            canvas.height,
+			newCanvas.width,
+			newCanvas.height,
             minValue,
             maxValue,
             variable,
@@ -123,13 +123,13 @@ async function convertToCanvasAsync(imgSrc) {
         // Step 3: Create ImageData and draw it back on the canvas
         const processedImageData = new ImageData(
             new Uint8ClampedArray(imageDataArray),
-            canvas.width,
-            canvas.height
+			newCanvas.width,
+			newCanvas.height
         );
         ctx.putImageData(processedImageData, 0, 0);
 
         // Step 4: Return the canvas
-		return {rgbArray, canvas};
+		return { rgbArray, newCanvas };
     } catch (error) {
         console.error("Error in convertToCanvasAsync:", error);
         throw error;
@@ -141,8 +141,11 @@ async function preloadImagesAsync() {
     try {
         for (const file of data["files"]) {
             // Step 1: Load the image
-            const imgSrc = "downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + file["file"];
-			const img = await loadImage(imgSrc); // Helper function to load images asynchronously
+            let imgSrc = "downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + file["file"];
+			if (zoomMode == "zoomed"){
+				imgSrc = `crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`
+			}
+			const img = await loadImage(imgSrc); // load images asynchronously
 			
 			
 			// Step 2: Process the image with convertToCanvasAsync
