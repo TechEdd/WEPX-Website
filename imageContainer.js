@@ -218,10 +218,10 @@ function getPixelValue(listValue) {
 		value = rgbArrayList[listValue][y * canvas.width + x];
 	}
 	
-	if (value != null || !isNaN(value)) {
-		return value?.toFixed(2);
-	} else {
+	if (value == null || isNaN(value) || value == undefined) {
 		return null;
+	} else {
+		return value?.toFixed(2);
 	};
 
 }

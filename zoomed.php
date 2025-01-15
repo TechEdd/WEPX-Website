@@ -291,7 +291,7 @@
 </script>
 <body>
 	<div id="menu">
-		<h1>
+		<h1 onclick="window.location.href='/'" style="cursor: pointer;">
 			WEPX Weather Toolkit
 		</h1>
 		
@@ -431,4 +431,56 @@ let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 
 	cropMap();
 
 
+</script>
+
+<script>
+//check value
+
+let cursorX = 0, cursorY = 0;
+container.addEventListener('mousemove', (e) => {
+	
+	cursorX = e.clientX;
+	cursorY = e.clientY;
+
+	tooltip.textContent = getPixelValue();
+	tooltip.style.right = `${window.innerWidth - e.pageX - tooltip.offsetWidth / 2}px`; // Center horizontally using right (because right:0 in outer container)
+	tooltip.style.top = `${e.pageY - 40}px`; // Center vertically
+	tooltip.style.display = 'block';             // Make the tooltip visible
+
+});
+
+container.addEventListener('mouseleave', () => {
+	tooltip.style.display = 'none'; // Hide the tooltip
+});
+
+function getPixelValue(listValue) {
+	//not explicitly sent, si checks slider value for image index
+	if (listValue==null){
+		listValue = slider.value
+	}
+
+	//get pixel index
+	const rect = canvas.getBoundingClientRect();
+	let x = cursorX - rect.left; // X position relative to the canvas
+	let y = cursorY - rect.top;  // Y position relative to the canvas
+	const zoomingFactorX = canvas.width / rect.width;
+	const zoomingFactorY = canvas.height / rect.height;
+
+	//get value of array
+	x = parseInt(x * zoomingFactorX);
+	y = parseInt(y * zoomingFactorY);
+	let value = null;
+	//out of range
+	if ((x < 0 && x < canvas.width) || (y < 0 && y < canvas.height)) {
+		value = null;
+	} else {
+		value = rgbArrayList[listValue][y * canvas.width + x];
+	}
+	if (value == null || isNaN(value) || value == undefined) {
+		return null;	
+	} else {
+		return value?.toFixed(2);
+	};
+
+}
 </script>
