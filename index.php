@@ -280,7 +280,7 @@
 </script>
 <body>
 	<div id="menu">
-		<h1>
+		<h1 onclick="window.location.href='/'" style="cursor: pointer;">
 			WEPX Weather Toolkit
 		</h1>
 		
