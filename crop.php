@@ -4,6 +4,10 @@ if (!isset($_GET['xmin'], $_GET['ymin'], $_GET['xmax'], $_GET['ymax'])) {
     die('Missing bbox parameters.');
 }
 
+if (!isset($_GET['file'])) {
+    die('No file asked.');
+}
+
 $xmin = floatval($_GET['xmin']);
 $ymin = floatval($_GET['ymin']);
 $xmax = floatval($_GET['xmax']);
@@ -29,7 +33,7 @@ $mapExtent = [
 ];
 
 // Load map image (WebP file)
-$mapImageFile = 'DPT.lev_2_m_above_ground.01.webp'; // Update this to your actual map image path
+$mapImageFile = realpath($_GET['file']);
 if (!file_exists($mapImageFile)) {
     die('Map image not found.');
 }
@@ -49,37 +53,52 @@ $pixelYmin = ($mapExtent['ymax'] - $ymax) / ($mapExtent['ymax'] - $mapExtent['ym
 $pixelXmax = ($xmax - $mapExtent['xmin']) / ($mapExtent['xmax'] - $mapExtent['xmin']) * $imageWidth;
 $pixelYmax = ($mapExtent['ymax'] - $ymin) / ($mapExtent['ymax'] - $mapExtent['ymin']) * $imageHeight;
 
-// Round pixel coordinates
-$cropX = max(0, round($pixelXmin));
-$cropY = max(0, round($pixelYmin));
-$cropWidth = min($imageWidth, round($pixelXmax - $pixelXmin));
-$cropHeight = min($imageHeight, round($pixelYmax - $pixelYmin));
+// Handle padding if bbox is outside image extent
+$padLeft = max(0, -round($pixelXmin));
+$padTop = max(0, -round($pixelYmin));
+$padRight = max(0, round($pixelXmax) - $imageWidth);
+$padBottom = max(0, round($pixelYmax) - $imageHeight);
 
-// Ensure valid cropping dimensions
-if ($cropWidth <= 0 || $cropHeight <= 0) {
-    die('Invalid crop dimensions.');
-}
+// Calculate the resolution of the requested bbox
+$outputWidth = round(($xmax - $xmin) / ($mapExtent['xmax'] - $mapExtent['xmin']) * $imageWidth);
+$outputHeight = round(($ymax - $ymin) / ($mapExtent['ymax'] - $mapExtent['ymin']) * $imageHeight);
 
-// Create cropped image
+// Create a transparent canvas with the requested resolution
+$outputImage = imagecreatetruecolor($outputWidth, $outputHeight);
+imagesavealpha($outputImage, true);
+$transparentColor = imagecolorallocatealpha($outputImage, 0, 0, 0, 127);
+imagefill($outputImage, 0, 0, $transparentColor);
+
+// Load and crop the map image
 $mapImage = imagecreatefromwebp($mapImageFile);
 if (!$mapImage) {
     die('Could not load map image.');
 }
 
-$croppedImage = imagecrop($mapImage, [
-    'x' => $cropX,
-    'y' => $cropY,
-    'width' => $cropWidth,
-    'height' => $cropHeight
-]);
+// Adjust crop coordinates within image bounds
+$cropX = max(0, round($pixelXmin));
+$cropY = max(0, round($pixelYmin));
+$cropWidth = min($imageWidth - $cropX, round($pixelXmax - $pixelXmin));
+$cropHeight = min($imageHeight - $cropY, round($pixelYmax - $pixelYmin));
 
-if (!$croppedImage) {
-    die('Could not crop the image.');
+// Copy the cropped image onto the transparent canvas at the correct position
+if ($cropWidth > 0 && $cropHeight > 0) {
+    $croppedImage = imagecrop($mapImage, [
+        'x' => $cropX,
+        'y' => $cropY,
+        'width' => $cropWidth,
+        'height' => $cropHeight
+    ]);
+
+    if ($croppedImage) {
+        imagecopy($outputImage, $croppedImage, $padLeft, $padTop, 0, 0, $cropWidth, $cropHeight);
+        imagedestroy($croppedImage);
+    }
 }
 
-// Output the cropped image as a lossless WebP
+// Output the final image as a lossless WebP
 header('Content-Type: image/webp');
-imagewebp($croppedImage, null, IMG_WEBP_LOSSLESS); // Quality = 100 ensures lossless WebP output
+imagewebp($outputImage, null, IMG_WEBP_LOSSLESS); // Quality = 100 ensures lossless WebP output
 imagedestroy($mapImage);
-imagedestroy($croppedImage);
+imagedestroy($outputImage);
 ?>
