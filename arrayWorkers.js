@@ -48,7 +48,7 @@ self.onmessage = function (event) {
 			imageDataArray[pixelIndex] = colorR; // Red
 			imageDataArray[pixelIndex + 1] = colorG; // Green
 			imageDataArray[pixelIndex + 2] = colorB; // Blue
-			imageDataArray[pixelIndex + 3] = colorA; // Fully opaque
+			imageDataArray[pixelIndex + 3] = colorA ?? 255; //Alpha, if no alpha, defaults to 255
 		}
 
 		index++; // Increment index for the next pixel
