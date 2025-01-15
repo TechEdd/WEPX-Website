@@ -1,0 +1,20 @@
+<div class="dropdown-container">
+  <button class="dropdown-btn" onclick="toggleDropdown('dropdownParameters')">Parameter</button>
+  
+  <!-- Main Dropdown Content -->
+  <div id="dropdownParameters" class="dropdown-content">
+    
+    <!-- Weather Models -->
+    <div class="expandable" onclick="toggleDropdown('surface')">
+      <span>Surface</span>
+      <span class="arrow">›</span>
+    </div>
+    <div id="surface" class="nested-dropdown-content">
+        <a href="javascript:(function(){updateUrlVariable('variable', 'CAPE');})()" title="">CAPE</a>
+        <a href="javascript:(function(){updateUrlVariable('variable', 'CIN');})()" title="">CIN</a>
+        <a href="javascript:(function(){updateUrlVariable('variable', 'SBT124');})()" title="">Satellite IR Simulation</a>
+        <a href="javascript:(function(){updateUrlVariable('variable', 'REFC');})()" title="">Composite Reflectivity</a>
+    </div>
+
+  </div>
+</div>

@@ -1,86 +1,8 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    /* Container for dropdown menu */
-    .dropdown-container {
-      position: relative;
-    }
-
-    /* Button to toggle main dropdown */
-    .dropdown-btn {
-      background-color: #4CAF50;
-      color: white;
-      padding: 12px;
-      font-size: 16px;
-      border: none;
-      width: 100%;
-      cursor: pointer;
-      text-align: left;
-    }
-
-    /* Dropdown content (initially hidden) */
-    .dropdown-content {
-      display: none;
-      background-color: transparent;
-      width: 100%;
-      box-sizing: border-box;
-	  color: white;
-	  padding: 2px;
-	  user-select: none;
-	  -webkit-user-select: none; /* Safari */        
-	  -moz-user-select: none; /* Firefox */
-	  -ms-user-select: none; /* IE10+/Edge */
-	  font-family: system-ui;
-    }
-
-    /* Links inside dropdown */
-    .dropdown-content a {
-      display: block;
-      padding: 5px;
-      text-decoration: none;
-      color: white;
-      cursor: pointer;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    /* Change link color on hover */
-    .dropdown-content a:hover {
-      background-color: #f1f1f1;
-    }
-
-    /* Sub-dropdown styling */
-    .nested-dropdown-content {
-      display: none;
-      padding-left: 20px;
-    }
-    
-    /* Expandable sections with an arrow indicator */
-    .expandable {
-      cursor: pointer;
-	  padding: 2px;
-    }
-
-    .arrow {
-      float: right;
-    }
-
-    /* Rotates the arrow when the sub-menu is open */
-    .open .arrow {
-      transform: rotate(90deg);
-    }
-  </style>
-</head>
-<body>
-
 <div class="dropdown-container">
-  <button class="dropdown-btn" onclick="toggleDropdown('dropdownContent')">Menu</button>
+  <button class="dropdown-btn" onclick="toggleDropdown('dropdownModels')">Menu</button>
   
   <!-- Main Dropdown Content -->
-  <div id="dropdownContent" class="dropdown-content">
+  <div id="dropdownModels" class="dropdown-content">
     
     <!-- Weather Models -->
     <div class="expandable" onclick="toggleDropdown('weatherModels')">
@@ -93,17 +15,17 @@
         <span class="arrow">›</span>
       </div>
       <div id="highResolution" class="nested-dropdown-content">
-        <a href="javascript:(function(){changeModel('HRDPS');})()" title="High Resolution Deterministic Prediction System">HRDPS</a>
-        <a href="javascript:(function(){changeModel('HRRR');})()" title="High Resolution Rapid Refresh (3km)">HRRR</a>
-        <a href="javascript:(function(){changeModel('HRRRSH');})()" title="HRRR Sub Hourly (3km)">HRRRSH</a>
-        <a href="javascript:(function(){changeModel('NAMNEST');})()" title="North American Mesoscale High Resolution (3km)">NAM NEST</a>
+        <a href="javascript:(function(){updateUrlVariable('model', 'HRDPS');})()" title="High Resolution Deterministic Prediction System">HRDPS</a>
+        <a href="javascript:(function(){updateUrlVariable('model', 'HRRR');})()" title="High Resolution Rapid Refresh (3km)">HRRR</a>
+        <a href="javascript:(function(){updateUrlVariable('model', 'HRRRSH');})()" title="HRRR Sub Hourly (3km)">HRRRSH</a>
+        <a href="javascript:(function(){updateUrlVariable('model', 'NAMNEST');})()" title="North American Mesoscale High Resolution (3km)">NAM NEST</a>
       </div>
       <div class="expandable" onclick="toggleDropdown('globalModels')">
         <span>Global Models</span>
         <span class="arrow">›</span>
       </div>
       <div id="globalModels" class="nested-dropdown-content">
-        <a href="javascript:(function(){changeModel('GDPS');})()" title="Global Deterministic Prediction System">GDPS</a>
+        <a href="javascript:(function(){updateUrlVariable('model', 'GDPS');})()" title="Global Deterministic Prediction System">GDPS</a>
       </div>
     </div>
 
@@ -160,19 +82,3 @@
     </div>
   </div>
 </div>
-
-<script>
-  // Function to toggle dropdown visibility
-  function toggleDropdown(id) {
-    var element = document.getElementById(id);
-    element.classList.toggle('open');
-    if (element.style.display === "block") {
-      element.style.display = "none";
-    } else {
-      element.style.display = "block";
-    }
-  }
-</script>
-
-</body>
-</html>
