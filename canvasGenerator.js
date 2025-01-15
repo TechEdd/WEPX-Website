@@ -1,5 +1,6 @@
 let img;
 let rgbArray;
+var newLoad = true;
 
 const max24BitValue = 256 ** 3;
 // Color table as an array of tuples (value, r, g, b)
@@ -101,19 +102,27 @@ async function mapColorsWithWorker(imageData, width, height, minValue, maxValue,
 async function convertToCanvasAsync(imgSrc) {
     try {
         // Step 1: Create a canvas and get raw RGBA data
-        const newCanvas = document.createElement("canvas");
-		const ctx = newCanvas.getContext("2d");
-        canvas.width = newCanvas.width = imgSrc.width;
-		canvas.height = newCanvas.height = imgSrc.height;
-        ctx.drawImage(imgSrc, 0, 0);
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+		canvas.width = imgSrc.width;
+		canvas.height = imgSrc.height;
+
+		//assert the right scale for the canvas
+		if (newLoad) {
+			document.getElementById("canvas").width = canvas.width;
+			document.getElementById("canvas").height = canvas.height;
+			newLoad = false;
+		}
+
+		ctx.drawImage(imgSrc, 0, 0);
 		
-		const imageData = ctx.getImageData(0, 0, newCanvas.width, newCanvas.height);
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
         // Step 2: Use the worker to process the RGBA data and apply the color mapping
         const { rgbArray, imageDataArray } = await mapColorsWithWorker(
             imageData.data, // Raw image data
-			newCanvas.width,
-			newCanvas.height,
+            canvas.width,
+            canvas.height,
             minValue,
             maxValue,
             variable,
@@ -123,13 +132,13 @@ async function convertToCanvasAsync(imgSrc) {
         // Step 3: Create ImageData and draw it back on the canvas
         const processedImageData = new ImageData(
             new Uint8ClampedArray(imageDataArray),
-			newCanvas.width,
-			newCanvas.height
+            canvas.width,
+            canvas.height
         );
         ctx.putImageData(processedImageData, 0, 0);
 
         // Step 4: Return the canvas
-		return { rgbArray, newCanvas };
+		return {rgbArray, canvas};
     } catch (error) {
         console.error("Error in convertToCanvasAsync:", error);
         throw error;
@@ -139,6 +148,7 @@ async function convertToCanvasAsync(imgSrc) {
 //squential preload
 async function preloadImagesAsync() {
     try {
+		var newLoad = true;
         for (const file of data["files"]) {
             // Step 1: Load the image
             let imgSrc = "downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + file["file"];
