@@ -1,0 +1,1 @@
+emcc image_processing.cpp -o image_processing.js -O3 --bind -s EXPORTED_FUNCTIONS="['_processImage', '_malloc', '_free']" -s ALLOW_MEMORY_GROWTH=1
