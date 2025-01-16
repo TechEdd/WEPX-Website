@@ -249,7 +249,7 @@
 	let request = "<?php echo $_GET['request'] ?? 'model'; ?>";
 	let model = "<?php echo $_GET['model'] ?? 'HRRR'; ?>";
 	let variable = "<?php $variable = $_GET['variable'] ?? 'CAPE'; echo $variable; ?>";
-	let level = "<?php echo $_GET['level'] ?? 'all_lev'; ?>";
+	let level = "<?php echo $_GET['level'] ?? 'lev_surface'; ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
 	var run = data["run"]*1000;
 	var runNb = new Date(parseInt(run)).getUTCHours();
@@ -358,8 +358,8 @@ let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 
 	//function scaling the canvas
 	function determineDistance(canvasObj){
 		// Get the dimensions of the container and 80% for border
-		const containerWidth = container.clientWidth * 0.8;
-		const containerHeight = container.clientHeight * 0.8;
+		const containerWidth = container.clientWidth * 0.9;
+		const containerHeight = container.clientHeight * 0.9;
 
 		// Get the original dimensions of the canvas (assumed to be set beforehand)
 		const canvasWidth = canvas.width;
@@ -390,41 +390,63 @@ let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 
 		const imageObj = new Image();
 		const context = map.getContext('2d');
 
-		// Set the image source and wait for it to load
-		imageObj.src = "full_map.webp";
-		imageObj.onload = function() {
-			const imageWidth = imageObj.width;  // Image width
-			const imageHeight = imageObj.height;  // Image height
+		fetch('full_map.svg')
+			.then(response => response.text())
+			.then(svgText => {
+				// Parse the SVG text into XML
+				const parser = new DOMParser();
+				const svgDoc = parser.parseFromString(svgText, 'image/svg+xml');
+            
+				// Reduce stroke width
+				const paths = svgDoc.querySelectorAll('path, line, rect, circle, polyline, polygon');
+				paths.forEach(path => {
+					const currentStrokeWidth = parseFloat(path.getAttribute('stroke-width')) || 1;
+					const newStrokeWidth = currentStrokeWidth / 30; //factor
+					path.setAttribute('stroke-width', newStrokeWidth);
+				});
 
-			console.log(imageWidth, imageHeight);
+				// Serialize the modified SVG back to a string
+				const modifiedSVG = new XMLSerializer().serializeToString(svgDoc);
 
-			// Calculate pixel coordinates for cropping
-			const pixelXmin = (xmin - fullmapbbox[0]) / (fullmapbbox[2] - fullmapbbox[0]) * imageWidth;
-			const pixelYmin = (fullmapbbox[3] - ymax) / (fullmapbbox[3] - fullmapbbox[1]) * imageHeight;
-			const pixelXmax = (xmax - fullmapbbox[0]) / (fullmapbbox[2] - fullmapbbox[0]) * imageWidth;
-			const pixelYmax = (fullmapbbox[3] - ymin) / (fullmapbbox[3] - fullmapbbox[1]) * imageHeight;
+				// Set the SVG as the source for the image object
+				imageObj.src = 'data:image/svg+xml;base64,' + btoa(modifiedSVG);
 
-			console.log(pixelXmin, pixelYmin, pixelXmax, pixelYmax);
+				// When the image is loaded, render it to the canvas
+				imageObj.onload = function() {
+					const imageWidth = imageObj.width;  // Image width
+					const imageHeight = imageObj.height;  // Image height
 
-			// Round pixel coordinates and ensure valid crop dimensions
-			const cropX = Math.max(0, Math.round(pixelXmin));
-			const cropY = Math.max(0, Math.round(pixelYmin));
-			const cropWidth = Math.min(imageWidth, Math.round(pixelXmax - pixelXmin));
-			const cropHeight = Math.min(imageHeight, Math.round(pixelYmax - pixelYmin));
+					console.log(imageWidth, imageHeight);
 
-			// Ensure valid cropping dimensions
-			if (cropWidth <= 0 || cropHeight <= 0) {
-				console.error('Invalid crop dimensions.');
-				return;
-			}
+					// Calculate pixel coordinates for cropping
+					const pixelXmin = (xmin - fullmapbbox[0]) / (fullmapbbox[2] - fullmapbbox[0]) * imageWidth;
+					const pixelYmin = (fullmapbbox[3] - ymax) / (fullmapbbox[3] - fullmapbbox[1]) * imageHeight;
+					const pixelXmax = (xmax - fullmapbbox[0]) / (fullmapbbox[2] - fullmapbbox[0]) * imageWidth;
+					const pixelYmax = (fullmapbbox[3] - ymin) / (fullmapbbox[3] - fullmapbbox[1]) * imageHeight;
 
-			// Set the map size to match the cropped image size
-			map.width = cropWidth;
-			map.height = cropHeight;
+					console.log(pixelXmin, pixelYmin, pixelXmax, pixelYmax);
 
-			// Draw the cropped portion of the image onto the canvas
-			context.drawImage(imageObj, cropX, cropY, cropWidth, cropHeight, 0, 0, map.width, map.height);
-		};
+					// Round pixel coordinates and ensure valid crop dimensions
+					const cropX = Math.max(0, Math.round(pixelXmin));
+					const cropY = Math.max(0, Math.round(pixelYmin));
+					const cropWidth = Math.min(imageWidth, Math.round(pixelXmax - pixelXmin));
+					const cropHeight = Math.min(imageHeight, Math.round(pixelYmax - pixelYmin));
+
+					// Ensure valid cropping dimensions
+					if (cropWidth <= 0 || cropHeight <= 0) {
+						console.error('Invalid crop dimensions.');
+						return;
+					}
+
+					// Set the map size to match the cropped image size
+					map.width = cropWidth*20;
+					map.height = cropHeight*20;
+
+					// Draw the cropped portion of the image onto the canvas
+					context.drawImage(imageObj, cropX, cropY, cropWidth, cropHeight, 0, 0, map.width, map.height);
+				};
+			})
+        .catch(error => console.error('Error loading SVG:', error));
 	}
 
 	// Call the function
