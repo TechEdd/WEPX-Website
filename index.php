@@ -238,7 +238,7 @@
 	let request = "<?php echo $_GET['request'] ?? 'model'; ?>";
 	let model = "<?php echo $_GET['model'] ?? 'HRRR'; ?>";
 	let variable = "<?php $variable = $_GET['variable'] ?? 'CAPE'; echo $variable; ?>";
-	let level = "<?php echo $_GET['level'] ?? 'all_lev'; ?>";
+	let level = "<?php echo $_GET['level'] ?? 'lev_surface'; ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
 	var run = data["run"]*1000;
 	var runNb = new Date(parseInt(run)).getUTCHours();
@@ -320,13 +320,14 @@
 		<div id="inner-container">
 			<!-- Add multiple images of varying sizes -->
 			<canvas class="image" id="canvas" style="top: 0px; left: 0px; z-index:50"></canvas>
-			<img class="image" id="map" src="full_map.webp" alt="Main Image" style="top: 0; left: 0; z-index:99">
+			<img class="image" id="map" src="full_map_low.webp" alt="Main Image" style="top: 0; left: 0; z-index:99">
 
 		</div>
 	</div>
 	
 </body>
 </html>
+<script src="image_processing.js"></script>
 <script src="imageContainer.js"></script>
 <script src="canvasGenerator.js"></script>
 <script src="menuGenerator.js"></script>
