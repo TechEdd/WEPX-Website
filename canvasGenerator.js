@@ -1,6 +1,9 @@
 let img;
 let rgbArray;
 var newLoad = true;
+var stopLoadingImages = false;
+let temp;
+let allImagesLoaded = false;
 
 const max24BitValue = 256 ** 3;
 // Color table as an array of tuples (value, r, g, b)
@@ -117,7 +120,7 @@ async function convertToCanvasAsync(imgSrc) {
 		ctx.drawImage(imgSrc, 0, 0);
 		
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
+		temp1 = imageData;
         // Step 2: Use the worker to process the RGBA data and apply the color mapping
         const { rgbArray, imageDataArray } = await mapColorsWithWorker(
             imageData.data, // Raw image data
@@ -147,10 +150,24 @@ async function convertToCanvasAsync(imgSrc) {
 
 //squential preload
 async function preloadImagesAsync() {
-    try {
-		var newLoad = true;
+	try {
+		//wait for the other loading to wait if necessary
+		allImagesLoaded = false;
+		while (stopLoadingImages) {
+			await new Promise(resolve => setTimeout(resolve, 100));
+		};
+
+		//assert the right scale for the canvas, used in converttocanvas function
+		newLoad = true;
+
         for (const file of data["files"]) {
-            // Step 1: Load the image
+			//if new variable loaded stop the loading of new files
+			if (stopLoadingImages) {
+				stopLoadingImages = false;
+				console.log("restart");
+				return;
+			}
+			// Step 1: Load the image
             let imgSrc = "downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + file["file"];
 			if (zoomMode == "zoomed"){
 				imgSrc = `crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`
@@ -162,13 +179,18 @@ async function preloadImagesAsync() {
 			console.time(imgSrc);
             const { rgbArray, canvas } = await convertToCanvasAsync(img);
 			console.timeEnd(imgSrc);
-            // Step 3: Add to canvasList and rgbArrayList
-            canvasList.push(canvas);
-			rgbArrayList.push(rgbArray);
+			// Step 3: Add to canvasList and rgbArrayList
+			// last resort to keep new array clean if restarted
+			if (!stopLoadingImages) {
+				canvasList.push(canvas);
+				rgbArrayList.push(rgbArray);
+			}
+            
 
             // Step 4: Update the main canvas if this is the first image
             slider.dispatchEvent(new Event("input"));
 		}
+		allImagesLoaded = true;
         console.log("All images preloaded successfully");
     } catch (error) {
         console.error("Error in preloadImagesAsync:", error);
@@ -196,7 +218,7 @@ function reloadImages(){
 	request = params.get('request') || 'model';
 	model = params.get('model') || 'HRRR';
 	variable = params.get('variable') || 'CAPE';
-	level = params.get('level') || 'all_lev';
+	level = params.get('level') || 'lev_surface';
 	run = params.get('run') || '00';
 	fetchFile(`getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run}`).then(listOfFiles => {
 		data = JSON.parse(listOfFiles);
@@ -236,7 +258,16 @@ function fetchFile(url) {
         });
 }
 
-
+function darkMode(dark){
+	if (dark){
+		container.style.backgroundColor = "#101010";
+		map.style.filter = "invert(1)";
+	}
+	else {
+		container.style.backgroundColor = "#ddd";
+		map.style.filter = "invert(0)";
+	}
+}
 
 window.addEventListener('DOMContentLoaded', () => {
 	preloadImagesAsync();
