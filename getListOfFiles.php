@@ -5,7 +5,7 @@ $request = $_GET['request'] ?? 'model';
 $model = $_GET['model'] ?? 'HRRR';
 $run = $_GET['run'] ?? '00';
 $variable = $_GET['variable'] ?? 'CAPE';
-$level = $_GET['level'] ?? 'all_lev';
+$level = $_GET['level'] ?? 'lev_surface';
 
 // Define the directory to search
 $directory = "./downloads/$model/$run/";
