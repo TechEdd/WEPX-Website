@@ -80,7 +80,11 @@ function updateSliderUI() {
         } else {
             slider.max = 18;
         }
-    } else { slider.max = 0 };
+    } else if (model == "HRRRSH"){
+		slider.max = 18*4;
+	}
+
+	else { slider.max = 0 };
     const max = parseInt(slider.max);
     const sliderWidth = sliderContainer.offsetWidth;
 
@@ -136,15 +140,22 @@ slider.addEventListener('input', () => {
 });
 updateSliderUI();
 
-function updateUrlVariable(variableName, variableValue) {
+function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
     const url = new URL(window.location.href);
     const params = url.searchParams;
 
     // Update or add the variable
     params.set(variableName, variableValue);
+	params.set(levelName, levelValue);
 
     // Update the browser's history without refreshing the page
     window.history.replaceState({}, '', `${url.pathname}?${params.toString()}`);
-	reloadImages();
+}
 
+function reloadImagesPrepare(){
+	//break the current image loading
+	if (!allImagesLoaded){
+		stopLoadingImages = true;
+	}
+    reloadImages();
 }
