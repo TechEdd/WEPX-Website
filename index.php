@@ -59,7 +59,15 @@
 			font-size: medium;
 			text-align: center;
 		}	
-		
+		#upper_info {
+			position: fixed;
+			width: 82vw;
+			background-color: #1f1e1e;
+			z-index: 99;
+			right: 0;
+			top: 0;
+			display: flex;
+		}
 		
 		canvas {
 		  image-rendering: pixelated;
@@ -235,10 +243,18 @@
 		document.getElementById("map").height= document.getElementById("canvas").height;
 	}
 	let zoomMode = "map";
-	let request = "<?php echo $_GET['request'] ?? 'model'; ?>";
-	let model = "<?php echo $_GET['model'] ?? 'HRRR'; ?>";
-	let variable = "<?php $variable = $_GET['variable'] ?? 'CAPE'; echo $variable; ?>";
-	let level = "<?php echo $_GET['level'] ?? 'lev_surface'; ?>";
+	<?php 
+		function sanitizeFilename($input) {
+			// Remove any directory traversal attempts or file paths
+			$input = basename($input);
+			// Optionally, ensure the input contains only safe characters
+			return preg_replace('/[^a-zA-Z0-9_-]/', '', $input);
+		} 
+	?>
+	let request = "<?php echo sanitizeFilename($_GET['request'] ?? 'model'); ?>";
+	let model = "<?php $model = sanitizeFilename($_GET['model'] ?? 'HRRR'); echo $model; ?>";
+	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
+	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
 	var run = data["run"]*1000;
 	var runNb = new Date(parseInt(run)).getUTCHours();
@@ -266,9 +282,14 @@
 			// Handle the case where 'variable' is not provided
 			echo "Error: No variable provided.";
 		}
-	
+
 	?>
-	
+
+	window.onload = function() {
+            document.getElementById("modelIndicator").innerHTML = "Model: " + model;
+            document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
+    };
+
 	//inverted colormaps
 	if (variable!="CIN"){
 		nodata = data["vmin"];
@@ -285,9 +306,15 @@
 		</h1>
 		
 		<?php include("dropdownmenu.html")?>
-		<?php include("HRRRmenu.html")?>
+		<?php include("{$model}menu.html")?>
 		
 	</div>
+
+	<div id="upper_info">
+		<h1 id="modelIndicator" style="margin-left: 1vw;">Model: </h1>
+		<h1 id="layerIndicator" style="text-align: end; flex: 1;margin-right: 1vw;">Layer: </h1>
+	</div>
+
 	<div id="timeline_control">
 		<div id="animateButtonDiv" style="width: 5%; display: flex; justify-content: center;">
 			<button id="animateButton" style="border: none; background: transparent; cursor: pointer; padding: 10px; margin: 5px;">

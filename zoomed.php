@@ -17,10 +17,10 @@
 		
         #container {
             width: 82vw;
-            height: 90vh;
+            height: 83vh;
             background-color: #ddd;
             position: fixed;
-			top:0;
+			bottom: 10vh;
 			right:0;
             overflow: hidden;
 			z-index: 1;
@@ -65,6 +65,16 @@
 			text-align: center;
 		}	
 		
+		#upper_info {
+			position: fixed;
+			width: 82vw;
+			height: 7vh;
+			background-color: #1f1e1e;
+			z-index: 99;
+			right: 0;
+			top: 0;
+			display: flex;
+		}
 		
 		canvas {
 		  
@@ -240,16 +250,24 @@
 		map.width = document.getElementById("canvas").width;
 		map.height= document.getElementById("canvas").height;
 	}
+	<?php 
+		function sanitizeFilename($input) {
+			// Remove any directory traversal attempts or file paths
+			$input = basename($input);
+			// Optionally, ensure the input contains only safe characters
+			return preg_replace('/[^a-zA-Z0-9_-]/', '', $input);
+		} 
+	?>
 	let zoomMode = "zoomed";
 	const url = new URL(window.location.href);
 	let xmin = url.searchParams.get("xmin");
 	let xmax = url.searchParams.get("xmax");
 	let ymin = url.searchParams.get("ymin");
 	let ymax = url.searchParams.get("ymax");
-	let request = "<?php echo $_GET['request'] ?? 'model'; ?>";
-	let model = "<?php echo $_GET['model'] ?? 'HRRR'; ?>";
-	let variable = "<?php $variable = $_GET['variable'] ?? 'CAPE'; echo $variable; ?>";
-	let level = "<?php echo $_GET['level'] ?? 'lev_surface'; ?>";
+	let request = "<?php echo sanitizeFilename($_GET['request'] ?? 'model'); ?>";
+	let model = "<?php $model = sanitizeFilename($_GET['model'] ?? 'HRRR'); echo $model; ?>";
+	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
+	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
 	var run = data["run"]*1000;
 	var runNb = new Date(parseInt(run)).getUTCHours();
@@ -287,6 +305,11 @@
 		nodata = data["vmax"]
 		
 	}
+	
+	window.onload = function() {
+            document.getElementById("modelIndicator").innerHTML = "Model: " + model;
+            document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
+    };
 
 </script>
 <body>
@@ -296,8 +319,13 @@
 		</h1>
 		
 		<?php include("dropdownmenu.html")?>
-		<?php include("HRRRmenu.html")?>
+		<?php include("{$model}menu.html")?>
 		
+	</div>
+
+	<div id="upper_info">
+		<h1 id="modelIndicator" style="margin-left: 1vw;">Model: </h1>
+		<h1 id="layerIndicator" style="text-align: end; flex: 1;margin-right: 1vw;">Layer: </h1>
 	</div>
 	<div id="timeline_control">
 		<div id="animateButtonDiv" style="width: 5%; display: flex; justify-content: center;">
