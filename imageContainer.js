@@ -4,6 +4,7 @@ const slider = document.getElementById('range-slider');
 const canvas = document.getElementById('canvas');
 const forecastTimeText = document.getElementById("forecastTime");
 const map = document.getElementById("map");
+let hrMapLoaded = false;
 let animationFrameId;
 let isDragging = false;
 let isSelecting = false;
@@ -143,20 +144,25 @@ function calculateBBox() {
     const lonMax = getLonFromPixel(endX);
     const latMin = getLatFromPixel(endY);
     
-     console.log(`Selected Bbox: lonMin: ${lonMin}, latMin: ${latMin}, lonMax: ${lonMax}, latMax: ${latMax}`);
-
+    console.log(`Selected Bbox: lonMin: ${lonMin}, latMin: ${latMin}, lonMax: ${lonMax}, latMax: ${latMax}`);
+	
+	
+	
 	const newUrl = new URL('zoomed.php', window.location.origin);
 	newUrl.search = new URLSearchParams({
 		request,
 		model,
 		variable,
 		level,
+		run: runNb.toString().padStart(2, "0"),
 		xmin: lonMin,
 		xmax: lonMax,
 		ymin: latMin,
 		ymax: latMax,
 	}).toString();
-
+	
+	isControlPressed = false;
+	
 	// Refresh the page with the new URL
 	window.location.href = newUrl.toString();
 }
@@ -301,11 +307,27 @@ innerContainer.addEventListener('touchend', () => {
 
 
 async function zoomContainer(zoomAmount, mouseX, mouseY) {
+	
+	if (!hrMapLoaded){
+		const preloader = new Image();
+		preloader.src = "full_map.webp";
+		hrMapLoaded = true;
+	}
+	
 	const prevZoomLevel = zoomLevel;
 	if (zoomLevel < 1) {
 		zoomAmount = zoomAmount / 4; //slower on unzoom
 	}
 	zoomLevel = Math.max(zoomLevel + zoomAmount, 0.3); // Prevent zooming out too far
+	if (zoomLevel>4){
+		if (map.src.split("/").at(-1) != "full_map.webp"){
+			map.src="full_map.webp"
+		}
+	} else {
+		if (map.src.split("/").at(-1) != "full_map_low.webp"){
+			map.src="full_map_low.webp"
+		}
+	}
 
 	const mouseXRel = mouseX; // Mouse position relative to the container
 	const mouseYRel = mouseY;
