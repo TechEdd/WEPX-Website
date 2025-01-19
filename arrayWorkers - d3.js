@@ -3,7 +3,7 @@ self.onmessage = function (event) {
     importScripts('https://d3js.org/d3.v7.min.js');
     // Precompute constants
     const imageSize = width * height;
-    const imageDataArray = new Uint8ClampedArray(imageSize * 4);
+    const imageDataArray = new Uint8Array(imageSize * 4);
     const rgbArray = new Float32Array(imageSize);
     const maxUint24 = 256 ** 3 - 1; // Maximum 24-bit value as a float
     const valueScale = (maxValue - minValue) / maxUint24;

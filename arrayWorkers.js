@@ -3,7 +3,7 @@ self.onmessage = function (event) {
 
 	// Precompute constants
 	const imageSize = width * height;
-	const imageDataArray = new Uint8ClampedArray(imageSize * 4);
+	const imageDataArray = new Uint8Array(imageSize * 4);
 	const rgbArray = new Float32Array(imageSize);
 	const oldMax = 16777215; // Maximum 24-bit value as a float
 	const valueRange = maxValue - minValue;
