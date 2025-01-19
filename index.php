@@ -42,7 +42,36 @@
 			height: 100vh;
 			background-color: #1f1e1e;
 			z-index:60;
+			overflow-x: hidden;
 		}
+
+		#menu::-webkit-scrollbar-track-piece:start {
+		  background: transparent;
+		}
+
+		#menu::-webkit-scrollbar-track-piece:end {
+		  background: transparent;
+		}
+
+		::-webkit-scrollbar {
+		  width: 8px;
+		  background: transparent; 
+		}
+
+		::-webkit-scrollbar-track {
+		}
+		/* Handle */
+		::-webkit-scrollbar-thumb {
+		  background: #999; 
+		  border-radius: 7px;
+}
+		}
+
+		/* Handle on hover */
+		::-webkit-scrollbar-thumb:hover {
+		  background: #555; 
+		}
+
         #timeline_control {
             position: fixed;
             width: 82vw;
@@ -307,7 +336,30 @@
 		
 		<?php include("dropdownmenu.html")?>
 		<?php include("{$model}menu.html")?>
-		
+		<div class="dropdown-container">
+			<button class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
+			<div id="dropdownRun" class="dropdown-content">
+				<?php
+					// Define the path
+					$path = __DIR__ . "/downloads/" . $model;
+
+					// Check if the path is a directory
+					if (is_dir($path)) {
+						// Scan the directory for folders
+						$folders = array_filter(glob($path . '/*'), 'is_dir');
+
+						// Generate the links for each folder
+						foreach ($folders as $folder) {
+							$run = basename($folder); // Extract the folder name
+							echo '<a href="javascript:(function(){updateUrlVariable(\'run\', \'' . htmlspecialchars($run) . '\');reloadImagesPrepare()})()">' . htmlspecialchars($run) . '</a>';
+						}
+					} else {
+						echo '<p>Invalid path or no folders found.</p>';
+					}
+					?>
+
+			</div>
+		</div>
 	</div>
 
 	<div id="upper_info">
