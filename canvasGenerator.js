@@ -72,89 +72,71 @@ async function drawColormap(colorTable) {
 drawColormap(colorTable);
 
 async function mapColorsWithWorker(imageData, width, height, minValue, maxValue, variable, colorTable, sizeOfImage) {
-    return new Promise((resolve, reject) => {
-		
-		let numCores = 4;
-		// Default to 4 threads if not available, divide by 2 for better performance on higher threads
-		if (navigator.hardwareConcurrency > 8){
-			numCores = navigator.hardwareConcurrency/2;
-		} else if (!navigator.hardwareConcurrency) {
-			numCores = 4;
-		} else {
-			numCores = navigator.hardwareConcurrency;
+	return new Promise((resolve, reject) => {
+		//deviding by 2 for best performance
+		let numCores = navigator.hardwareConcurrency || 4;
+
+		const workers = [];
+		const results = [];
+		let completed = 0;
+
+		const chunkSize = (height + numCores - 1) >> Math.log2(numCores);
+		const transferableObjects = [];
+
+		for (let i = 0; i < numCores; i++) {
+			const worker = new Worker(sizeOfImage > 1200 ? "arrayWorkers - d3.js" : "arrayWorkers.js");
+			console.log( sizeOfImage > 1200 ? "arrayWorkers - d3.js" : "arrayWorkers.js")
+			workers.push(worker);
+
+			worker.onmessage = (e) => {
+				const { rgbArray, imageDataArray } = e.data;
+				results[i] = { rgbArray: new Float32Array(rgbArray), imageDataArray: new Uint8ClampedArray(imageDataArray) };
+				worker.terminate();
+
+				if (++completed === numCores) {
+					const finalRgbArray = new Float32Array(width * height);
+					const finalImageDataArray = new Uint8ClampedArray(width * height * 4);
+
+					for (let j = 0; j < numCores; j++) {
+						const offset = j * chunkSize * width * 4;
+						finalRgbArray.set(results[j].rgbArray, j * chunkSize * width);
+						finalImageDataArray.set(results[j].imageDataArray, offset);
+					}
+
+					resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
+				}
+			};
+
+			worker.onerror = (err) => {
+				console.error("Worker encountered an error:", err);
+				reject(err);
+				worker.terminate();
+			};
+
+			const startRow = i * chunkSize;
+			const endRow = Math.min(startRow + chunkSize, height);
+			const chunkHeight = endRow - startRow;
+			const chunkImageData = imageData.slice(startRow * width * 4, endRow * width * 4);
+
+			transferableObjects.push(chunkImageData.buffer);
+
+			worker.postMessage({
+				imageData: chunkImageData,
+				width,
+				height: chunkHeight,
+				minValue,
+				maxValue,
+				isInvertedColormap,
+				colorTable
+			}, [chunkImageData.buffer]);
 		}
-		
-        const workers = [];
-        const results = [];
-        let completed = 0;
-
-        const chunkSize = Math.ceil(height / numCores);
-        for (let i = 0; i < numCores; i++) {
-			
-			let worker;
-			//d3.js faster for images full of data, propritary faster for images with null pixels
-			if (sizeOfImage > 1200){
-				worker = new Worker("arrayWorkers - d3.js");
-				console.log("using d3.js converter")
-			} else {
-				worker = new Worker("arrayWorkers.js");
-				console.log("using propritary converter")
-			}
-			
-            workers.push(worker);
-
-            worker.onmessage = (e) => {
-                let { rgbArray, imageDataArray } = e.data; // Received processed RGBA array
-                rgbArray = new Float32Array(rgbArray);
-                imageDataArray = new Uint8ClampedArray(imageDataArray);
-                results[i] = { rgbArray, imageDataArray };
-                worker.terminate(); // Clean up the worker
-
-                if (++completed === numCores) {
-                    // Combine results
-                    const finalRgbArray = new Float32Array(width * height);
-                    const finalImageDataArray = new Uint8ClampedArray(width * height * 4);
-
-                    for (let j = 0; j < numCores; j++) {
-                        const offset = j * chunkSize * width * 4;
-                        finalRgbArray.set(results[j].rgbArray, j * chunkSize * width);
-                        finalImageDataArray.set(results[j].imageDataArray, offset);
-                    }
-
-                    resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
-                }
-            };
-
-            worker.onerror = (err) => {
-                console.error("Worker encountered an error:", err);
-                reject(err); // Reject on error
-                worker.terminate(); // Clean up the worker
-            };
-
-            // Calculate the chunk of image data for this worker
-            const startRow = i * chunkSize;
-            const endRow = Math.min(startRow + chunkSize, height);
-            const chunkHeight = endRow - startRow;
-            const chunkImageData = imageData.slice(startRow * width * 4, endRow * width * 4);
-
-            // Post data to the worker
-            worker.postMessage({
-                imageData: chunkImageData, // Raw RGBA data from the canvas
-                width, // Width of the image
-                height: chunkHeight, // Height of the chunk
-                minValue, // Minimum value for scaling
-                maxValue, // Maximum value for scaling
-                isInvertedColormap, // if colormap inverted
-                colorTable // Color mapping table
-            });
-        }
-    });
+	});
 }
 
 
 async function convertToCanvasAsync(imgSrc, imgSize) {
     try {
-        // Step 1: Create a canvas and get raw RGBA data
+        //  Create a canvas and get raw RGBA data
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 		canvas.width = imgSrc.width;
@@ -171,7 +153,7 @@ async function convertToCanvasAsync(imgSrc, imgSize) {
 		
         const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 		temp1 = imageData;
-        // Step 2: Use the worker to process the RGBA data and apply the color mapping
+        // Use the worker to process the RGBA data and apply the color mapping
         const { rgbArray, imageDataArray } = await mapColorsWithWorker(
             imageData.data, // Raw image data
             canvas.width,
@@ -183,7 +165,7 @@ async function convertToCanvasAsync(imgSrc, imgSize) {
 			imgSize
         );
 
-        // Step 3: Create ImageData and draw it back on the canvas
+        // Create ImageData and draw it back on the canvas
         const processedImageData = new ImageData(
             new Uint8ClampedArray(imageDataArray),
             canvas.width,
@@ -191,7 +173,6 @@ async function convertToCanvasAsync(imgSrc, imgSize) {
         );
         ctx.putImageData(processedImageData, 0, 0);
 
-        // Step 4: Return the canvas
 		return {rgbArray, canvas};
     } catch (error) {
         console.error("Error in convertToCanvasAsync:", error);
@@ -211,37 +192,42 @@ async function preloadImagesAsync() {
 		//assert the right scale for the canvas, used in converttocanvas function
 		newLoad = true;
 
-        for (const file of data["files"]) {
+		for (const [index, file] of data["files"].entries()) {
 			//if new variable loaded stop the loading of new files
 			if (stopLoadingImages) {
 				stopLoadingImages = false;
 				console.log("restart");
 				return;
 			}
-			// Step 1: Load the image
+			// Load the image
             let imgSrc = "downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + file["file"];
 			if (zoomMode == "zoomed"){
 				imgSrc = `crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`
 			}
 			const { img, sizeInKB } = await loadImage(imgSrc); // load images asynchronously
 			
-			// Step 2: Process the image with convertToCanvasAsync
+			// Process the image with convertToCanvasAsync
 			console.time(imgSrc);
             const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB);
 			console.timeEnd(imgSrc);
-			// Step 3: Add to canvasList and rgbArrayList
+			// Add to canvasList and rgbArrayList
 			// last resort to keep new array clean if restarted
 			if (!stopLoadingImages) {
 				canvasList.push(canvas);
 				rgbArrayList.push(rgbArray);
 			}
             
+            // Update the main canvas if this is the first image
+			slider.dispatchEvent(new Event("input"));
 
-            // Step 4: Update the main canvas if this is the first image
-            slider.dispatchEvent(new Event("input"));
+			// Slider
+			availableSlider.style.width = ((index / data["files"].length * 100).toString() + "%");
+			sliderMaxAvailable = index;
+
 		}
 		allImagesLoaded = true;
-        console.log("All images preloaded successfully");
+		console.log("All images preloaded");
+		availableSlider.style.opacity = 0;
     } catch (error) {
         console.error("Error in preloadImagesAsync:", error);
     }
@@ -282,10 +268,10 @@ function reloadImages(){
 	run1 = params.get('run') || '00';
 	document.getElementById("modelIndicator").innerHTML = "Model: " + model;
 	document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
-	fetchFile(`getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run}`).then(listOfFiles => {
+	fetchFile(`getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run1}`).then(listOfFiles => {
 		data = JSON.parse(listOfFiles);
 		console.log(JSON.parse(listOfFiles));
-		run = data["run"]*1000;
+		run1 = data["run"]*1000;
 		runNb = new Date(parseInt(run1)).getUTCHours();
 		minValue = data["vmin"];
 		maxValue = data["vmax"];
