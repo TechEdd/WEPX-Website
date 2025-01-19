@@ -279,14 +279,14 @@ function reloadImages(){
 	model = params.get('model') || 'HRRR';
 	variable = params.get('variable') || 'CAPE';
 	level = params.get('level') || 'lev_surface';
-	run = params.get('run') || '00';
+	run1 = params.get('run') || '00';
 	document.getElementById("modelIndicator").innerHTML = "Model: " + model;
 	document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
 	fetchFile(`getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run}`).then(listOfFiles => {
 		data = JSON.parse(listOfFiles);
 		console.log(JSON.parse(listOfFiles));
 		run = data["run"]*1000;
-		runNb = new Date(parseInt(run)).getUTCHours();
+		runNb = new Date(parseInt(run1)).getUTCHours();
 		minValue = data["vmin"];
 		maxValue = data["vmax"];
 		fetchFile('colormaps/' + variable + '.txt').then(jsonColor => {

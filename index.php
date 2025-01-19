@@ -285,8 +285,8 @@
 	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
 	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
-	var run = data["run"]*1000;
-	var runNb = new Date(parseInt(run)).getUTCHours();
+	let run1 = data["run"]*1000;
+	var runNb = new Date(parseInt(run1)).getUTCHours();
 	var minValue = data["vmin"];
 	var maxValue = data["vmax"];
 	//let isInvertedColormap = (variable === "CIN" || variable === "SBT124" || minValue>maxValue);
@@ -316,7 +316,8 @@
 
 	window.onload = function() {
             document.getElementById("modelIndicator").innerHTML = "Model: " + model;
-            document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
+            document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+			document.getElementById("runSelect").innerHTML = "Run: " +  new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
     };
 
 	//inverted colormaps
@@ -337,7 +338,7 @@
 		<?php include("dropdownmenu.html")?>
 		<?php include("{$model}menu.html")?>
 		<div class="dropdown-container">
-			<button class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
+			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
 			<div id="dropdownRun" class="dropdown-content">
 				<?php
 					// Define the path
@@ -379,13 +380,13 @@
 				</svg>
 			</button>
 		</div>
-		<div class="slider-container" style="width: 70%;">
+		<div class="slider-container" style="width: 100%;">
 			<div class="track"></div>
 			<div class="fill-left"></div>
 			<div class="unavailable-rectangle"></div>
 			<input type="range" min="0" max="48" value="0" class="slider" id="range-slider">
 		</div>
-		<div style="display: flex; width: 20%; justify-content: center;">
+		<div style="display: flex; width: 30%; justify-content: center; text-align: center;">
 			<h3 id="forecastTime" style="color: white; font-family: system-ui;"></h3>
 		</div>
 	</div>

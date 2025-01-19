@@ -269,8 +269,8 @@
 	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
 	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
 	let data = <?php require 'getListOfFiles.php';?>;
-	var run = data["run"]*1000;
-	var runNb = new Date(parseInt(run)).getUTCHours();
+	var run1 = data["run"]*1000;
+	var runNb = new Date(parseInt(run1)).getUTCHours();
 	var minValue = data["vmin"];
 	var maxValue = data["vmax"];
 	//let isInvertedColormap = (variable === "CIN" || variable === "SBT124" || minValue>maxValue);
