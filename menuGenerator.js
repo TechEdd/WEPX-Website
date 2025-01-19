@@ -140,7 +140,7 @@ slider.addEventListener('input', () => {
 });
 updateSliderUI();
 
-function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
+function updateUrlVariable(variableName, variableValue) {
     const url = new URL(window.location.href);
     const params = url.searchParams;
 
