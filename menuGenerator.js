@@ -24,6 +24,7 @@ function toggleDropdown(id) {
 
 // slider
 const fillLeft = document.querySelector('.fill-left');
+const availableSlider = document.querySelector('.available');
 const unavailableRectangle = document.querySelector('.unavailable-rectangle');
 const sliderContainer = document.querySelector('.slider-container');
 
@@ -140,13 +141,15 @@ slider.addEventListener('input', () => {
 });
 updateSliderUI();
 
-function updateUrlVariable(variableName, variableValue) {
+function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
     const url = new URL(window.location.href);
     const params = url.searchParams;
 
     // Update or add the variable
     params.set(variableName, variableValue);
-	params.set(levelName, levelValue);
+    if (levelName != undefined) {
+        params.set(levelName, levelValue);
+    }
 
     // Update the browser's history without refreshing the page
     window.history.replaceState({}, '', `${url.pathname}?${params.toString()}`);
