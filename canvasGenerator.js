@@ -74,7 +74,7 @@ drawColormap(colorTable);
 async function mapColorsWithWorker(imageData, width, height, minValue, maxValue, variable, colorTable, sizeOfImage) {
 	return new Promise((resolve, reject) => {
 		//deviding by 2 for best performance
-		let numCores = navigator.hardwareConcurrency || 4;
+		let numCores = navigator.hardwareConcurrency/2 || 4;
 
 		const workers = [];
 		const results = [];
