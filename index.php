@@ -143,27 +143,27 @@
             border-radius: 5px;
             background: transparent;
             position: absolute;
-            z-index: 2;
+            z-index: 3;
         }
 
-            .slider::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                width: 25px;
-                height: 25px;
-                border-radius: 50%;
-                background: #333;
-                cursor: pointer;
-                z-index: 3;
-                position: relative;
-            }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #333;
+            cursor: pointer;
+            z-index: 4;
+            position: relative;
+        }
 
-            .slider::-moz-range-thumb {
-                width: 25px;
-                height: 25px;
-                border-radius: 50%;
-                background: #333;
-                cursor: pointer;
-            }
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #333;
+            cursor: pointer;
+        }
 
         .track {
             position: absolute;
@@ -181,6 +181,15 @@
             border-radius: 5px 0 0 5px;
             z-index: 2;
         }
+
+		.available {
+			position: absolute;
+			height: 15px;
+			background: #83c75b;
+			border-radius: 0 5px 5px 0;
+			z-index:3;
+			transition: width 0.2s linear, opacity 1s linear;
+		}
 
         .unavailable-rectangle {
             position: absolute;
@@ -383,6 +392,7 @@
 		<div class="slider-container" style="width: 100%;">
 			<div class="track"></div>
 			<div class="fill-left"></div>
+			<div class="available"></div>
 			<div class="unavailable-rectangle"></div>
 			<input type="range" min="0" max="48" value="0" class="slider" id="range-slider">
 		</div>

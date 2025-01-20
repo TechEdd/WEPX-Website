@@ -310,10 +310,16 @@ function darkMode(dark){
 	if (dark){
 		container.style.backgroundColor = "#101010";
 		map.style.filter = "invert(1)";
+		if (document.querySelector(".image").style.border != undefined) {
+			document.querySelector(".image").style.border ="border: 2px solid white"
+		}
 	}
 	else {
 		container.style.backgroundColor = "#ddd";
 		map.style.filter = "invert(0)";
+		if (document.querySelector(".image").style.border != undefined) {
+			document.querySelector(".image").style.border = "border: 2px solid black"
+		}
 	}
 }
 

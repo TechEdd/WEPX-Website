@@ -16,27 +16,26 @@
 		}
 		
         #container {
-            width: 82vw;
-            height: 83vh;
+            width: 100vw;
+            height: 100vh;
+
+            justify-content: center;
+            align-items: center;
             background-color: #ddd;
-            position: fixed;
-			bottom: 10vh;
-			right:0;
+            position: relative;
             overflow: hidden;
 			z-index: 1;
         }
         #inner-container {
             transform-origin: center;
-            position: relative;
-			width: 100%;
-			height: 100%;
+            position: absolute;
         }
         .image {
             position: absolute;
 			left: 50%;
-			top: 50%;
 			transform: translate(-50%, -50%);
-			border: 4px solid black;
+			top: 50%;
+			border: 2px solid black;
         }
         #inner-container.dragging {
             cursor: grabbing;
@@ -47,7 +46,36 @@
 			height: 100vh;
 			background-color: #1f1e1e;
 			z-index:60;
+			overflow-x: hidden;
 		}
+
+		#menu::-webkit-scrollbar-track-piece:start {
+		  background: transparent;
+		}
+
+		#menu::-webkit-scrollbar-track-piece:end {
+		  background: transparent;
+		}
+
+		::-webkit-scrollbar {
+		  width: 8px;
+		  background: transparent; 
+		}
+
+		::-webkit-scrollbar-track {
+		}
+		/* Handle */
+		::-webkit-scrollbar-thumb {
+		  background: #999; 
+		  border-radius: 7px;
+}
+		}
+
+		/* Handle on hover */
+		::-webkit-scrollbar-thumb:hover {
+		  background: #555; 
+		}
+
         #timeline_control {
             position: fixed;
             width: 82vw;
@@ -64,11 +92,9 @@
 			font-size: medium;
 			text-align: center;
 		}	
-		
 		#upper_info {
 			position: fixed;
 			width: 82vw;
-			height: 7vh;
 			background-color: #1f1e1e;
 			z-index: 99;
 			right: 0;
@@ -77,7 +103,6 @@
 		}
 		
 		canvas {
-		  
 		  image-rendering: pixelated;
 		  image-rendering: crisp-edges;
 		  image-rendering: -moz-crisp-edges;
@@ -122,27 +147,27 @@
             border-radius: 5px;
             background: transparent;
             position: absolute;
-            z-index: 2;
+            z-index: 3;
         }
 
-            .slider::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                width: 25px;
-                height: 25px;
-                border-radius: 50%;
-                background: #333;
-                cursor: pointer;
-                z-index: 3;
-                position: relative;
-            }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #333;
+            cursor: pointer;
+            z-index: 4;
+            position: relative;
+        }
 
-            .slider::-moz-range-thumb {
-                width: 25px;
-                height: 25px;
-                border-radius: 50%;
-                background: #333;
-                cursor: pointer;
-            }
+        .slider::-moz-range-thumb {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            background: #333;
+            cursor: pointer;
+        }
 
         .track {
             position: absolute;
@@ -160,6 +185,15 @@
             border-radius: 5px 0 0 5px;
             z-index: 2;
         }
+
+		.available {
+			position: absolute;
+			height: 15px;
+			background: #83c75b;
+			border-radius: 0 5px 5px 0;
+			z-index:3;
+			transition: width 0.2s linear, opacity 1s linear;
+		}
 
         .unavailable-rectangle {
             position: absolute;
@@ -308,7 +342,8 @@
 	
 	window.onload = function() {
             document.getElementById("modelIndicator").innerHTML = "Model: " + model;
-            document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
+            document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+			document.getElementById("runSelect").innerHTML = "Run: " +  new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
     };
 
 </script>
@@ -320,7 +355,30 @@
 		
 		<?php include("dropdownmenu.html")?>
 		<?php include("{$model}menu.html")?>
-		
+		<div class="dropdown-container">
+			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
+			<div id="dropdownRun" class="dropdown-content">
+				<?php
+					// Define the path
+					$path = __DIR__ . "/downloads/" . $model;
+
+					// Check if the path is a directory
+					if (is_dir($path)) {
+						// Scan the directory for folders
+						$folders = array_filter(glob($path . '/*'), 'is_dir');
+
+						// Generate the links for each folder
+						foreach ($folders as $folder) {
+							$run = basename($folder); // Extract the folder name
+							echo '<a href="javascript:(function(){updateUrlVariable(\'run\', \'' . htmlspecialchars($run) . '\');reloadImagesPrepare()})()">' . htmlspecialchars($run) . '</a>';
+						}
+					} else {
+						echo '<p>Invalid path or no folders found.</p>';
+					}
+					?>
+
+			</div>
+		</div>
 	</div>
 
 	<div id="upper_info">
@@ -342,6 +400,7 @@
 		<div class="slider-container" style="width: 70%;">
 			<div class="track"></div>
 			<div class="fill-left"></div>
+			<div class="available"></div>
 			<div class="unavailable-rectangle"></div>
 			<input type="range" min="0" max="48" value="0" class="slider" id="range-slider">
 		</div>
@@ -356,7 +415,7 @@
 			<canvas id="colormapCanvas" width="10" height="100" style="border: 1px solid black; right: 5px; display: flex; justify-self: flex-end; margin: 10px;"></canvas>
 		</div>
 		<div id="tooltip" class="tooltip"></div>
-		<div id="inner-container">
+		<div id="inner-container" style="width: 82vw; right: 0; height: 100%; height: calc(100% - 2.6em - 10vh); top: 2.6em;">
 			<!-- Add multiple images of varying sizes -->
 			<canvas class="image" id="canvas" style="z-index:50"></canvas>
 			<canvas class="image" id="map" alt="Main Image" style="z-index:99"></canvas>
@@ -386,8 +445,8 @@ let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 
 	//function scaling the canvas
 	function determineDistance(canvasObj){
 		// Get the dimensions of the container and 80% for border
-		const containerWidth = container.clientWidth * 0.9;
-		const containerHeight = container.clientHeight * 0.9;
+		const containerWidth = container.clientWidth * 0.8;
+		const containerHeight = container.clientHeight * 0.8;
 
 		// Get the original dimensions of the canvas (assumed to be set beforehand)
 		const canvasWidth = canvas.width;
@@ -457,8 +516,8 @@ let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 
 					// Round pixel coordinates and ensure valid crop dimensions
 					const cropX = Math.max(0, Math.round(pixelXmin));
 					const cropY = Math.max(0, Math.round(pixelYmin));
-					const cropWidth = Math.min(imageWidth, Math.round(pixelXmax - pixelXmin));
-					const cropHeight = Math.min(imageHeight, Math.round(pixelYmax - pixelYmin));
+					const cropWidth = Math.min(imageWidth, pixelXmax - pixelXmin);
+					const cropHeight = Math.min(imageHeight, pixelYmax - pixelYmin);
 
 					// Ensure valid cropping dimensions
 					if (cropWidth <= 0 || cropHeight <= 0) {
@@ -466,12 +525,14 @@ let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 
 						return;
 					}
 
-					// Set the map size to match the cropped image size
+					// Set the map size to match approx the cropped image resolution
 					map.width = cropWidth*20;
 					map.height = cropHeight*20;
 
+					canvas.style.aspectRatio = map.style.aspectRatio = map.width/map.height;
+
 					// Draw the cropped portion of the image onto the canvas
-					context.drawImage(imageObj, cropX, cropY, cropWidth, cropHeight, 0, 0, map.width, map.height);
+					context.drawImage(imageObj, pixelXmin, pixelYmin, cropWidth, cropHeight, 0, 0, map.width, map.height);
 				};
 			})
         .catch(error => console.error('Error loading SVG:', error));

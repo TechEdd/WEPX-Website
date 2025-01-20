@@ -112,11 +112,11 @@ function epochToTimestamp(epoch) {
 }
 
 // Initialize the slider and attach event listener
+let sliderMaxAvailable = 1;
 slider.addEventListener('input', () => {
-    const maxValue = data["files"].length - 1; // Block slider at redStartValue
     
-	if (slider.value > maxValue) {
-        slider.value = maxValue;
+    if (slider.value > sliderMaxAvailable) {
+        slider.value = sliderMaxAvailable;
     } else if (slider.value < 0){
 		slider.value = 0;
 	}
@@ -159,6 +159,8 @@ function reloadImagesPrepare(){
 	//break the current image loading
 	if (!allImagesLoaded){
 		stopLoadingImages = true;
-	}
+    }
+    document.getElementById("runSelect").innerHTML = "Run: " + new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
+    availableSlider.style.opacity = 1;
     reloadImages();
 }
