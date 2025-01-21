@@ -83,7 +83,9 @@ function updateSliderUI() {
         }
     } else if (model == "HRRRSH"){
 		slider.max = 18*4;
-	}
+    } else if (model == "NAMNEST") {
+        slider.max = 60;
+    }
 
 	else { slider.max = 0 };
     const max = parseInt(slider.max);
