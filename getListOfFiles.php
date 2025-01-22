@@ -5,7 +5,7 @@ function sanitizeFilename($input) {
 	$input = basename($input);
 	// Optionally, ensure the input contains only safe characters
 	return preg_replace('/[^a-zA-Z0-9_-]/', '', $input);
-} 
+};
 
 //ex: getListOfFiles.php?request=model&model=HRRR&run=00&variable=CAPE&level=all_lev
 // Get URL parameters
