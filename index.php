@@ -344,29 +344,14 @@
 			WEPX Weather Toolkit
 		</h1>
 		
-		<?php include("dropdownmenu.html")?>
-		<?php include("{$model}menu.html")?>
+		<?php include("dropdownmenu.html") ?>
+		<div id="parametersMenu">
+			<?php include("{$model}menu.html") ?>
+		</div>
 		<div class="dropdown-container">
 			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
 			<div id="dropdownRun" class="dropdown-content">
-				<?php
-					// Define the path
-					$path = __DIR__ . "/downloads/" . $model;
-
-					// Check if the path is a directory
-					if (is_dir($path)) {
-						// Scan the directory for folders
-						$folders = array_filter(glob($path . '/*'), 'is_dir');
-
-						// Generate the links for each folder
-						foreach ($folders as $folder) {
-							$run = basename($folder); // Extract the folder name
-							echo '<a href="javascript:(function(){updateUrlVariable(\'run\', \'' . htmlspecialchars($run) . '\');reloadImagesPrepare()})()">' . htmlspecialchars($run) . '</a>';
-						}
-					} else {
-						echo '<p>Invalid path or no folders found.</p>';
-					}
-					?>
+				<?php include("getRuns.php") ?>
 
 			</div>
 		</div>

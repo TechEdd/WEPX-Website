@@ -165,4 +165,11 @@ function reloadImagesPrepare(){
     document.getElementById("runSelect").innerHTML = "Run: " + new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
     availableSlider.style.opacity = 1;
     reloadImages();
+    fetchFile(`getRuns.php?model=${model}&run=${run}`).then(listOfRuns => {
+        document.getElementById('dropdownRun').innerHTML = listOfRuns;
+    })
+    fetchFile(`{model}menu.html`).then(paramMenu => { 
+        document.getElementById("parametersMenu").innerHTML = paramMenu;
+    })
+    
 }

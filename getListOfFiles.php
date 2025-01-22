@@ -1,11 +1,19 @@
 <?php
+
+function sanitizeFilename($input) {
+	// Remove any directory traversal attempts or file paths
+	$input = basename($input);
+	// Optionally, ensure the input contains only safe characters
+	return preg_replace('/[^a-zA-Z0-9_-]/', '', $input);
+} 
+
 //ex: getListOfFiles.php?request=model&model=HRRR&run=00&variable=CAPE&level=all_lev
 // Get URL parameters
-$request = $_GET['request'] ?? 'model';
-$model = $_GET['model'] ?? 'HRRR';
-$run = $_GET['run'] ?? '00';
-$variable = $_GET['variable'] ?? 'CAPE';
-$level = $_GET['level'] ?? 'lev_surface';
+$request = sanitizeFilename($_GET['request'] ?? 'model');
+$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
+$run = sanitizeFilename($_GET['run'] ?? '00');
+$variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
+$level = sanitizeFilename($_GET['level'] ?? 'lev_surface');
 
 // Define the directory to search
 $directory = "./downloads/$model/$run/";
