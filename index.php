@@ -352,7 +352,6 @@
 			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
 			<div id="dropdownRun" class="dropdown-content">
 				<?php include("getRuns.php") ?>
-
 			</div>
 		</div>
 	</div>
