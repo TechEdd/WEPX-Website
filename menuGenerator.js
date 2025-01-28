@@ -164,7 +164,7 @@ function reloadImagesPrepare(){
     }
     document.getElementById("runSelect").innerHTML = "Run: " + new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
     availableSlider.style.opacity = 1;
-    fetchFile(`getRuns.php?model=${model}&run=${run}`).then(listOfRuns => {
+    fetchFile(`getRuns.php?model=${model}&run=${runNb.toString().padStart(2, '0')}`).then(listOfRuns => {
         console.log(listOfRuns);
         document.getElementById('dropdownRun').innerHTML = listOfRuns;
     })
