@@ -34,6 +34,34 @@ const imageScales = {
 	'main-image': 1,  // Scale factor for main image
 	'attached-image': 1  // Example: attached image is 80% the size of the main image
 };
+//temporary solution, bbox need to be in getFiles from php (future hurricane models)
+function getForecastBbox(model) {
+	const forecastbbox = {
+		"HRRR": [
+			-134.12142793280148,
+			21.14706163554821,
+			-60.92779791187436,
+			52.62870288555903
+		],
+		"HRRRSH": [
+			-134.12142793280148,
+			21.14706163554821,
+			-60.92779791187436,
+			52.62870288555903
+		],
+		"NAMNEST": [
+			-134.1220749371968,
+			21.146938548456045,
+			-60.92844436001437,
+			52.62870367719711
+		],
+		"HRDPS": [
+			-152.78,
+			27.22,
+			-40.7,
+			70.6
+		]
+	};
 
 // Prevent default drag and context menu on the container
 container.addEventListener('mousedown', (e) => {
