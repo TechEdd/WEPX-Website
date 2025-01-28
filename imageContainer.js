@@ -19,7 +19,8 @@ const zoomSpeed = 0.2;
 const moveSpeed = 10;
 const fullmapbbox = [-180, -90, 180, 90];
 //futurely get in model_extent.json
-let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 52.62870288555903];
+//futurely get in model_extent.json
+let forecastbbox = getForecastBbox(model);
 let rectBBox = null;
 
 // Define the resolution of the main image
@@ -63,6 +64,8 @@ function getForecastBbox(model) {
 		]
 	};
 
+	return forecastbbox[model] || null; // Returns the bounding box or null if model not found
+}
 // Prevent default drag and context menu on the container
 container.addEventListener('mousedown', (e) => {
     if (isControlPressed) {
