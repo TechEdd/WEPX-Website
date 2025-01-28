@@ -1,0 +1,20 @@
+<div class="dropdown-container">
+  <button class="dropdown-btn" onclick="toggleDropdown('dropdownParameters')">Parameter</button>
+  
+  <!-- Main Dropdown Content -->
+  <div id="dropdownParameters" class="dropdown-content">
+    
+    <!-- Weather Models -->
+    <div class="expandable" onclick="toggleDropdown('surface')">
+      <span>Surface</span>
+      <span class="arrow">›</span>
+    </div>
+    <div id="surface" class="nested-dropdown-content">
+        <a id="CAPE" href="javascript:(function(){updateUrlVariable('variable', 'CAPE');updateUrlVariable('level', 'Sfc');reloadImagesPrepare()})()" title="">CAPE at Surface</a>
+        <a id="GUST" href="javascript:(function(){updateUrlVariable('variable', 'GUST');updateUrlVariable('level', 'AGL-10m');reloadImagesPrepare()})()" title="">Gusts at 10m</a>
+		<a id="DPT" href="javascript:(function(){updateUrlVariable('variable', 'DPT');updateUrlVariable('level', 'AGL-2m');reloadImagesPrepare()})()" title="">Dew Point Temperature at 2m</a>
+		<a id="TMP" href="javascript:(function(){updateUrlVariable('variable', 'TMP');updateUrlVariable('level', 'AGL-2m');reloadImagesPrepare()})()" title="">Temperature at 2m</a>
+    </div>
+
+  </div>
+</div>
