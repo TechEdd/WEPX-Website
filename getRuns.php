@@ -11,8 +11,8 @@
 	};
 	
 	if (!(isset($run) || isset($model))){
-		sanitizeFilename($_GET['model'] ?? 'HRRR');
-		sanitizeFilename($_GET['run'] ?? '00');
+		$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
+		$run = sanitizeFilename($_GET['run'] ?? '00');
 	}
 
 	// Define the path
