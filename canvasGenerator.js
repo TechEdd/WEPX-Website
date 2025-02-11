@@ -221,7 +221,7 @@ async function preloadImagesAsync() {
 			slider.dispatchEvent(new Event("input"));
 
 			// Slider
-			availableSlider.style.width = ((index / data["files"].length * 100).toString() + "%");
+			availableSlider.style.width = ((index / unavailablePercent) * 100).toString() + "%");
 			sliderMaxAvailable = index;
 
 		}
