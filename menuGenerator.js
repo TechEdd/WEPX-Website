@@ -76,7 +76,7 @@ function updateSliderUI() {
     const sliderValue = parseInt(slider.value);
     const min = parseInt(slider.min);
     if (model == "HRRR") {
-        if ([0, 6, 12, 18].includes(runNb)) {
+        if ([0, 6, 12, 18].includes(runNb) {
             slider.max = 48;
         } else {
             slider.max = 18;
@@ -164,7 +164,7 @@ function reloadImagesPrepare(){
     }
     document.getElementById("runSelect").innerHTML = "Run: " + new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
     availableSlider.style.opacity = 1;
-    fetchFile(`getRuns.php?model=${model}&run=${runNb.toString().padStart(2, '0')}`).then(listOfRuns => {
+    fetchFile(`getRuns.php?model=${model}&run=${run1/1000}`).then(listOfRuns => {
         document.getElementById('dropdownRun').innerHTML = listOfRuns;
     })
     fetchFile(`${model}menu.html`).then(paramMenu => {

@@ -200,7 +200,7 @@ async function preloadImagesAsync() {
 				return;
 			}
 			// Load the image
-            let imgSrc = "downloads/" + model + "/" + runNb.toString().padStart(2, "0") + "/" + file["file"];
+            let imgSrc = "downloads/" + model + "/" + run1/1000 + "/" + file["file"];
 			if (zoomMode == "zoomed"){
 				imgSrc = `crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`
 			}
