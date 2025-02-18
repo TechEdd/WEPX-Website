@@ -1,4 +1,7 @@
 <?php
+	function formatEpoch($epoch) {
+		return date('Y-m-d H:i', $epoch);
+	}
 
 
 	if(!function_exists("sanitizeFilename")) {
@@ -26,7 +29,8 @@
 		// Generate the links for each folder
 		foreach ($folders as $folder) {
 			$run = basename($folder); // Extract the folder name
-			echo '<a href="javascript:(function(){updateUrlVariable(\'run\', \'' . htmlspecialchars($run) . '\');reloadImagesPrepare()})()">' . htmlspecialchars($run) . '</a>';
+
+			echo '<a href="javascript:(function(){updateUrlVariable(\'run\', \'' . htmlspecialchars($run) . '\');reloadImagesPrepare()})()">' . formatEpoch($run) . '</a>';
 		}
 	} else {
 		echo '<p>Invalid path or no folders found.</p>';
