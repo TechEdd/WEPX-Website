@@ -37,7 +37,7 @@ $files = scandir($directory);
 
 // Filter files based on the criteria
 $filteredFiles = array_filter($files, function($file) use ($variable, $level) {
-    return preg_match("/\.$variable\.$level\.webp$/", $file);
+    return preg_match("/\." . preg_quote($variable, '/') . "\." . preg_quote($level, '/') . "\.webp$/", $file);
 });
 
 // Prepare output data
