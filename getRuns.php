@@ -24,7 +24,7 @@
 	// Check if the path is a directory
 	if (is_dir($path)) {
 		// Scan the directory for folders
-		$folders = array_filter(glob($path . '/*'), 'is_dir');
+		$folders = array_reverse(array_filter(glob($path . '/*'), 'is_dir'));
 
 		// Generate the links for each folder
 		foreach ($folders as $folder) {
