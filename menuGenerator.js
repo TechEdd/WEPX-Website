@@ -76,7 +76,7 @@ function updateSliderUI() {
     const sliderValue = parseInt(slider.value);
     const min = parseInt(slider.min);
     if (model == "HRRR") {
-        if ([0, 6, 12, 18].includes(runNb) {
+        if ([0, 6, 12, 18].includes(runNb)) {
             slider.max = 48;
         } else {
             slider.max = 18;
