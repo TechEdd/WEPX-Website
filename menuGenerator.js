@@ -1,3 +1,4 @@
+var unavailablePercent;
 // dropdownmenu
 // Function to toggle dropdown visibility
 function toggleDropdown(id) {
@@ -93,7 +94,7 @@ function updateSliderUI() {
 
     // Calculate percentages
     const leftPercent = ((sliderValue - min) / (max - min)) * 100;
-    var unavailablePercent = ((data["files"].length - 1 - min) / (max - min)) * 100;
+    unavailablePercent = ((data["files"].length - 1 - min) / (max - min)) * 100;
 
     // Update blue fill
     fillLeft.style.width = `${leftPercent}%`;

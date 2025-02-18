@@ -222,7 +222,7 @@ async function preloadImagesAsync() {
 
 			// Slider
 			if (unavailablePercent === undefined) {
-				var unavailablePercent = ((data["files"].length - 1 - slider.min) / (slider.max - slider.min)) * 100;
+				unavailablePercent = ((data["files"].length - 1 - slider.min) / (slider.max - slider.min)) * 100;
 			}
 			availableSlider.style.width = ((index / unavailablePercent) * 100).toString() + "%";
 			sliderMaxAvailable = index;
