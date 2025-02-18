@@ -221,6 +221,9 @@ async function preloadImagesAsync() {
 			slider.dispatchEvent(new Event("input"));
 
 			// Slider
+			if (unavailablePercent === undefined) {
+				var unavailablePercent = ((data["files"].length - 1 - min) / (max - min)) * 100;
+			}
 			availableSlider.style.width = ((index / unavailablePercent) * 100).toString() + "%";
 			sliderMaxAvailable = index;
 
