@@ -15,7 +15,8 @@
 	
 	if (!(isset($run) || isset($model))){
 		$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
-		$run = sanitizeFilename($_GET['run'] ?? file_get_contents('getLastRun.php?model=' . urlencode($model));
+		include 'getLastRun.php';
+		$run = sanitizeFilename($_GET['run'] ?? getLastRun($model);
 	} else {
 		echo '<p>Invalid path or no folders found.</p>';
 	};
