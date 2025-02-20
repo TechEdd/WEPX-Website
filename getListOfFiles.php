@@ -14,7 +14,7 @@ if(!function_exists("sanitizeFilename")) {
 $request = sanitizeFilename($_GET['request'] ?? 'model');
 $model = sanitizeFilename($_GET['model'] ?? 'HRRR');
 include 'getLastRun.php';
-$run = sanitizeFilename($_GET['run'] ?? getLastRun($model);
+$run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
 $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
 $level = sanitizeFilename($_GET['level'] ?? 'lev_surface');
 
