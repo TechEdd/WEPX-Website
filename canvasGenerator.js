@@ -261,38 +261,40 @@ function reloadImages(){
 	rgbArray = null;
 	canvasList = [];
 	rgbArrayList = [];
-	console.log(rgbArrayList,canvasList)
-	
+	console.log(rgbArrayList, canvasList);
 	const params = new URLSearchParams(window.location.search);
 	request = params.get('request') || 'model';
 	model = params.get('model') || 'HRRR';
 	variable = params.get('variable') || 'CAPE';
 	level = params.get('level') || 'lev_surface';
-	run1 = params.get('run') || '00';
-	document.getElementById("modelIndicator").innerHTML = "Model: " + model;
-	document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
-	fetchFile(`getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run1}`).then(listOfFiles => {
-		data = JSON.parse(listOfFiles);
-		console.log(JSON.parse(listOfFiles));
-		run1 = data["run"]*1000;
-		runNb = new Date(parseInt(run1)).getUTCHours();
-		minValue = data["vmin"];
-		maxValue = data["vmax"];
-		fetchFile('colormaps/' + variable + '.txt').then(jsonColor => {
-			colorTable = JSON.parse(jsonColor);
-			let isInvertedColormap = false;
-			//inverted colormaps
-			if (variable!="CIN"||variable!="SBT124"){
-				nodata = data["vmin"];
-			} else {
-				nodata = data["vmax"]
-				
-			}
-			drawColormap(colorTable);
-			preloadImagesAsync();
-		});	
-		
-	});	
+	fetchFile(`getLastRun.php?model=${model}`).then(lastRun => {
+		run1 = params.get('run') || lastRun;
+		document.getElementById("modelIndicator").innerHTML = "Model: " + model;
+		document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
+		fetchFile(`getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run1}`).then(listOfFiles => {
+			data = JSON.parse(listOfFiles);
+			console.log(JSON.parse(listOfFiles));
+			run1 = data["run"] * 1000;
+			runNb = new Date(parseInt(run1)).getUTCHours();
+			minValue = data["vmin"];
+			maxValue = data["vmax"];
+			fetchFile('colormaps/' + variable + '.txt').then(jsonColor => {
+				colorTable = JSON.parse(jsonColor);
+				let isInvertedColormap = false;
+				//inverted colormaps
+				if (variable != "CIN" || variable != "SBT124") {
+					nodata = data["vmin"];
+				} else {
+					nodata = data["vmax"]
+
+				}
+				drawColormap(colorTable);
+				preloadImagesAsync();
+			});
+
+		});
+	});
+	
 }
 
 function fetchFile(url) {
