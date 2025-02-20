@@ -19,7 +19,7 @@
 	if (is_dir($path)) {
 		// Scan the directory for folders
 		$folders = array_reverse(array_filter(glob($path . '/*'), 'is_dir'));
-		echo $folders[0];
+		echo  htmlspecialchars(basename($folders[0]));
 	} else {
 		echo '<p>Invalid path or no folders found.</p>';
 	}
