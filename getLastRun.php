@@ -9,8 +9,10 @@
 		}
 	};
 
-	if (isset($model)){
+	if (!isset($model)){
 		$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
+	} else {
+		echo '<p>Invalid path or no folders found.</p>';
 	};
 
 	$path = __DIR__ . "/downloads/" . $model;

@@ -16,7 +16,9 @@
 	if (!(isset($run) || isset($model))){
 		$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
 		$run = sanitizeFilename($_GET['run'] ?? '00');
-	}
+	} else {
+		echo '<p>Invalid path or no folders found.</p>';
+	};
 
 	// Define the path
 	$path = __DIR__ . "/downloads/" . $model;
