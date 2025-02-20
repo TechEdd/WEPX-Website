@@ -13,7 +13,7 @@ if(!function_exists("sanitizeFilename")) {
 // Get URL parameters
 $request = sanitizeFilename($_GET['request'] ?? 'model');
 $model = sanitizeFilename($_GET['model'] ?? 'HRRR');
-$run = sanitizeFilename($_GET['run'] ?? file_get_contents('getLastRun.php?run=' . urlencode($model)));
+$run = sanitizeFilename($_GET['run'] ?? file_get_contents('getLastRun.php?model=' . urlencode($model)));
 $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
 $level = sanitizeFilename($_GET['level'] ?? 'lev_surface');
 
