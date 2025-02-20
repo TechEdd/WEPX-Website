@@ -11,7 +11,7 @@
 
 	if (isset($model)){
 		$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
-	}
+	};
 
 	$path = __DIR__ . "/downloads/" . $model;
 
@@ -20,7 +20,7 @@
 		// Scan the directory for folders
 		$folders = array_reverse(array_filter(glob($path . '/*'), 'is_dir'));
 		echo $folders[0];
-	else {
+	} else {
 		echo '<p>Invalid path or no folders found.</p>';
 	}
 ?>
