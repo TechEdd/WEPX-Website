@@ -71,22 +71,23 @@ function getColorForValue(value, colorTable) {
     if (value <= colorTable[0].value) return colorTable[0].color;
     if (value >= colorTable[len - 1].value) return colorTable[len - 1].color;
 
-    // Binary search for the correct interval
+    // Binary search to find the correct interval
     let low = 0, high = len - 1;
     while (low < high - 1) {
         let mid = (low + high) >> 1;
-        if (colorTable[mid].value === value) return colorTable[mid].color; // Exact match
-        if (colorTable[mid].value < value) low = mid;
+        if (colorTable[mid].value <= value) low = mid;
         else high = mid;
     }
 
-    // Get stops and interpolation factor
+    // Get the two closest stops
     let stop1 = colorTable[low], stop2 = colorTable[high];
-    let range = stop2.value - stop1.value || 1; // Avoid division by zero
-    let t = (value - stop1.value) / range;
-    let c1 = stop1.color, c2 = stop2.color;
+    let v1 = stop1.value, v2 = stop2.value;
 
-    // Inline linear interpolation using bitwise OR for fast rounding
+    // Compute interpolation factor, ensuring it's within 0-1
+    let t = (value - v1) / (v2 - v1);
+
+    // Get colors and perform linear interpolation
+    let c1 = stop1.color, c2 = stop2.color;
     return [
         (c1[0] + t * (c2[0] - c1[0])) | 0,
         (c1[1] + t * (c2[1] - c1[1])) | 0,
@@ -94,6 +95,7 @@ function getColorForValue(value, colorTable) {
         (c1[3] + t * (c2[3] - c1[3])) | 0
     ];
 }
+
 
 
 
