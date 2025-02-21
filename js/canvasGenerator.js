@@ -84,8 +84,8 @@ async function mapColorsWithWorker(imageData, width, height, minValue, maxValue,
 		const transferableObjects = [];
 
 		for (let i = 0; i < numCores; i++) {
-			const worker = new Worker(sizeOfImage > 1200 ? "arrayWorkers - d3.js" : "arrayWorkers.js");
-			console.log( sizeOfImage > 1200 ? "arrayWorkers - d3.js" : "arrayWorkers.js")
+			const worker = new Worker(sizeOfImage > 1200 ? "/js/arrayWorkers - d3.js" : "/js/arrayWorkers.js");
+			console.log(sizeOfImage > 1200 ? "/js/arrayWorkers - d3.js" : "/js/arrayWorkers.js")
 			workers.push(worker);
 
 			worker.onmessage = (e) => {
