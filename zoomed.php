@@ -302,7 +302,7 @@
 	let model = "<?php $model = sanitizeFilename($_GET['model'] ?? 'HRRR'); echo $model; ?>";
 	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
 	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
-	let data = <?php require 'getListOfFiles.php';?>;
+	let data = <?php require 'scripts/getListOfFiles.php';?>;
 	var run1 = data["run"]*1000;
 	var runNb = new Date(parseInt(run1)).getUTCHours();
 	var minValue = data["vmin"];
@@ -353,8 +353,8 @@
 			WEPX Weather Toolkit
 		</h1>
 		
-		<?php include("dropdownmenu.html")?>
-		<?php include("{$model}menu.html")?>
+		<?php include("scripts/dropdownmenu.html")?>
+		<?php include("scripts/{$model}menu.html")?>
 		<div class="dropdown-container">
 			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
 			<div id="dropdownRun" class="dropdown-content">
@@ -438,8 +438,8 @@ const fullmapbbox = [-180, -90, 180, 90];
 let forecastbbox = [-134.12142793280148, 21.14706163554821, -60.92779791187436, 52.62870288555903];
 </script>
 
-<script src="canvasGenerator.js"></script>
-<script src="menuGenerator.js"></script>
+<script src="js/canvasGenerator.js"></script>
+<script src="js/menuGenerator.js"></script>
 
 <script>
 	//function scaling the canvas
