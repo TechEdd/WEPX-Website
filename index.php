@@ -293,7 +293,7 @@
 	let model = "<?php $model = sanitizeFilename($_GET['model'] ?? 'HRRR'); echo $model; ?>";
 	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
 	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
-	let data = <?php require 'getListOfFiles.php'; ?>;
+	let data = <?php require 'scripts/getListOfFiles.php'; ?>;
 	let run1 = data["run"]*1000;
 	var runNb = new Date(parseInt(run1)).getUTCHours();
 	var minValue = data["vmin"];
@@ -351,7 +351,7 @@
 		<div class="dropdown-container">
 			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
 			<div id="dropdownRun" class="dropdown-content">
-				<?php include("getRuns.php") ?>
+				<?php include("scripts/getRuns.php") ?>
 			</div>
 		</div>
 	</div>
