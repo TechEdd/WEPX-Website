@@ -344,9 +344,9 @@
 			WEPX Weather Toolkit
 		</h1>
 		
-		<?php include("dropdownmenu.html") ?>
+		<?php include("menus/dropdownmenu.html") ?>
 		<div id="parametersMenu">
-			<?php include("{$model}menu.html") ?>
+			<?php include("menus/{$model}menu.html") ?>
 		</div>
 		<div class="dropdown-container">
 			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
