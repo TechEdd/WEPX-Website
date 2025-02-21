@@ -401,7 +401,7 @@
 	
 </body>
 </html>
-<script src="image_processing.js"></script>
-<script src="imageContainer.js"></script>
-<script src="canvasGenerator.js"></script>
-<script src="menuGenerator.js"></script>
+<script src="js/image_processing.js"></script>
+<script src="js/imageContainer.js"></script>
+<script src="js/canvasGenerator.js"></script>
+<script src="js/menuGenerator.js"></script>
