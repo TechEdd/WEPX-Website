@@ -44,7 +44,7 @@ self.onmessage = function (event) {
 			imageDataArray[pixelIndex + 3] = 0; // Fully transparent
 		} else {
 			// Map value to a color
-			const [colorR, colorG, colorB, colorA] = getColorForValue(scaledValue, colorTable);
+			const [colorR, colorG, colorB, colorA] = getColorForValue(scaledValue, colorTable, isInvertedColormap);
 			imageDataArray[pixelIndex] = colorR; // Red
 			imageDataArray[pixelIndex + 1] = colorG; // Green
 			imageDataArray[pixelIndex + 2] = colorB; // Blue
@@ -63,15 +63,15 @@ self.onmessage = function (event) {
 };
 
 // Helper function to find color for a value
-function getColorForValue(value, colorTable) {
+function getColorForValue(value, colorTable, isInverted) {
     let len = colorTable.length;
     if (len < 2) return [0, 0, 0, 0];
 
     // Early return for out-of-bounds values
-    if (value <= colorTable[0].value) return colorTable[0].color;
-    if (value >= colorTable[len - 1].value) return colorTable[len - 1].color;
+    if (value <= colorTable[0].value) return colorTable[isInverted ? len - 1 : 0].color;
+    if (value >= colorTable[len - 1].value) return colorTable[isInverted ? 0 : len - 1].color;
 
-    // Binary search to find the correct interval
+    // Binary search for the correct interval
     let low = 0, high = len - 1;
     while (low < high - 1) {
         let mid = (low + high) >> 1;
@@ -79,15 +79,15 @@ function getColorForValue(value, colorTable) {
         else high = mid;
     }
 
-    // Get the two closest stops
     let stop1 = colorTable[low], stop2 = colorTable[high];
-    let v1 = stop1.value, v2 = stop2.value;
+    let t = (value - stop1.value) / (stop2.value - stop1.value);
 
-    // Compute interpolation factor, ensuring it's within 0-1
-    let t = (value - v1) / (v2 - v1);
+    // Inversion handling
+    let idx1 = isInverted ? len - 1 - low : low;
+    let idx2 = isInverted ? len - 1 - high : high;
+    let c1 = colorTable[idx1].color, c2 = colorTable[idx2].color;
 
-    // Get colors and perform linear interpolation
-    let c1 = stop1.color, c2 = stop2.color;
+    // Linear interpolation of RGBA
     return [
         (c1[0] + t * (c2[0] - c1[0])) | 0,
         (c1[1] + t * (c2[1] - c1[1])) | 0,
@@ -95,7 +95,4 @@ function getColorForValue(value, colorTable) {
         (c1[3] + t * (c2[3] - c1[3])) | 0
     ];
 }
-
-
-
 
