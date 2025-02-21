@@ -17,9 +17,7 @@
 		$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
 		include 'getLastRun.php';
 		$run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
-	} else {
-		echo '<p>Invalid path or no folders found.</p>';
-	};
+	}
 
 	// Define the path
 	$path = $_SERVER['DOCUMENT_ROOT'] . "/downloads/" . $model;
