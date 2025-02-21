@@ -168,7 +168,7 @@ function reloadImagesPrepare() {
     fetchFile(`/scripts/getRuns.php?model=${model}&run=${run1 / 1000}`).then(listOfRuns => {
         document.getElementById('dropdownRun').innerHTML = listOfRuns;
     })
-    fetchFile(`/menu/${model}menu.html`).then(paramMenu => {
+    fetchFile(`/menus/${model}menu.html`).then(paramMenu => {
         document.getElementById("parametersMenu").innerHTML = paramMenu;
     })
     reloadImages();
