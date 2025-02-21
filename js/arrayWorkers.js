@@ -64,35 +64,19 @@ self.onmessage = function (event) {
 
 // Helper function to find color for a value
 function getColorForValue(value, colorTable, isInverted) {
-    let len = colorTable.length;
-    if (len < 2) return [0, 0, 0, 0];
+    if (value <= colorTable[0].value) return colorTable[0].color;
+    if (value >= colorTable[colorTable.length - 1].value) return colorTable[colorTable.length - 1].color;
 
-    // Early return for out-of-bounds values
-    if (value <= colorTable[0].value) return colorTable[isInverted ? len - 1 : 0].color;
-    if (value >= colorTable[len - 1].value) return colorTable[isInverted ? 0 : len - 1].color;
-
-    // Binary search for the correct interval
-    let low = 0, high = len - 1;
-    while (low < high - 1) {
-        let mid = (low + high) >> 1;
-        if (colorTable[mid].value <= value) low = mid;
-        else high = mid;
+    for (let i = 0; i < colorTable.length - 1; i++) {
+        let c1 = colorTable[i], c2 = colorTable[i + 1];
+        if (value >= c1.value && value <= c2.value) {
+            let t = (value - c1.value) / (c2.value - c1.value);
+            let color = c1.color.map((c, j) => Math.round(c + (c2.color[j] - c) * t));
+            return isInverted ? color.reverse() : color;
+        }
     }
 
-    let stop1 = colorTable[low], stop2 = colorTable[high];
-    let t = (value - stop1.value) / (stop2.value - stop1.value);
-
-    // Inversion handling
-    let idx1 = isInverted ? len - 1 - low : low;
-    let idx2 = isInverted ? len - 1 - high : high;
-    let c1 = colorTable[idx1].color, c2 = colorTable[idx2].color;
-
-    // Linear interpolation of RGBA
-    return [
-        (c1[0] + t * (c2[0] - c1[0])) | 0,
-        (c1[1] + t * (c2[1] - c1[1])) | 0,
-        (c1[2] + t * (c2[2] - c1[2])) | 0,
-        (c1[3] + t * (c2[3] - c1[3])) | 0
-    ];
+    return [0, 0, 0, 0]; // Default if something goes wrong
 }
+
 
