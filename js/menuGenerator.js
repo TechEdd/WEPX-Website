@@ -2,13 +2,13 @@ var unavailablePercent;
 // dropdownmenu
 // Function to toggle dropdown visibility
 function toggleDropdown(id) {
-	var element = document.getElementById(id);
-	element.classList.toggle('open');
-	if (element.style.display === "block") {
-	  element.style.display = "none";
-	} else {
-	  element.style.display = "block";
-	}
+    var element = document.getElementById(id);
+    element.classList.toggle('open');
+    if (element.style.display === "block") {
+        element.style.display = "none";
+    } else {
+        element.style.display = "block";
+    }
 }
 
 // Function to toggle dropdown visibility
@@ -16,9 +16,9 @@ function toggleDropdown(id) {
     var element = document.getElementById(id);
     element.classList.toggle('open');
     if (element.style.display === "block") {
-      element.style.display = "none";
+        element.style.display = "none";
     } else {
-      element.style.display = "block";
+        element.style.display = "block";
     }
 }
 
@@ -48,17 +48,17 @@ playPauseButton.addEventListener('click', () => {
         const maxValue = data["files"].length - 1;
 
         playInterval = setInterval(() => {
-			const maxValue = data["files"].length - 1; // Maximum slider value
-			const minValue = 0; // Minimum slider value
+            const maxValue = data["files"].length - 1; // Maximum slider value
+            const minValue = 0; // Minimum slider value
 
-			if (slider.value < maxValue) {
-				slider.value++;
-			} else {
-				slider.value = minValue; // Reset to the minimum value
-			}
+            if (slider.value < maxValue) {
+                slider.value++;
+            } else {
+                slider.value = minValue; // Reset to the minimum value
+            }
 
-			slider.dispatchEvent(new Event('input')); // Trigger slider input event
-		}, delay);
+            slider.dispatchEvent(new Event('input')); // Trigger slider input event
+        }, delay);
     } else {
         stopPlaying(); // Stop the interval
     }
@@ -82,13 +82,13 @@ function updateSliderUI() {
         } else {
             slider.max = 18;
         }
-    } else if (model == "HRRRSH"){
-		slider.max = 18*4;
+    } else if (model == "HRRRSH") {
+        slider.max = 18 * 4;
     } else if (model == "NAMNEST") {
         slider.max = 60;
     }
 
-	else { slider.max = 0 };
+    else { slider.max = 0 };
     const max = parseInt(slider.max);
     const sliderWidth = sliderContainer.offsetWidth;
 
@@ -105,42 +105,42 @@ function updateSliderUI() {
 }
 
 function epochToTimestamp(epoch) {
-	const date = new Date(epoch * 1000); // Convert epoch to milliseconds
-	const year = date.getFullYear();
-	const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
-	const day = String(date.getDate()).padStart(2, '0');
-	const hours = String(date.getHours()).padStart(2, '0');
-	const minutes = String(date.getMinutes()).padStart(2, '0');
-	return `${year}-${month}-${day} ${hours}:${minutes}`;
+    const date = new Date(epoch * 1000); // Convert epoch to milliseconds
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
 // Initialize the slider and attach event listener
 let sliderMaxAvailable = 1;
 slider.addEventListener('input', () => {
-    
+
     if (slider.value > sliderMaxAvailable) {
         slider.value = sliderMaxAvailable;
-    } else if (slider.value < 0){
-		slider.value = 0;
-	}
+    } else if (slider.value < 0) {
+        slider.value = 0;
+    }
     updateSliderUI();
-    
-	//temporarily stopping dragging preventing resetting
-	if(zoomMode=="map"){
-		isDragging = false; 
-		updateContainerTransform();
-	}
-	
-	//change canvas
+
+    //temporarily stopping dragging preventing resetting
+    if (zoomMode == "map") {
+        isDragging = false;
+        updateContainerTransform();
+    }
+
+    //change canvas
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     canvas.getContext('2d').drawImage(canvasList[slider.value], 0, 0, canvas.width, canvas.height);
     determineDistance(canvasList[slider.value]);
     forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["forecastTime"]);
-	if(zoomMode=="map"){
-		if(isLeftPressed){
-			isDragging = true;
-		}
-	}
+    if (zoomMode == "map") {
+        if (isLeftPressed) {
+            isDragging = true;
+        }
+    }
 });
 updateSliderUI();
 
@@ -158,20 +158,20 @@ function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
     window.history.replaceState({}, '', `${url.pathname}?${params.toString()}`);
 }
 
-function reloadImagesPrepare(){
-	//break the current image loading
-	if (!allImagesLoaded){
-		stopLoadingImages = true;
+function reloadImagesPrepare() {
+    //break the current image loading
+    if (!allImagesLoaded) {
+        stopLoadingImages = true;
     }
     document.getElementById("runSelect").innerHTML = "Run: " + new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
     availableSlider.style.opacity = 1;
-    fetchFile(`getRuns.php?model=${model}&run=${run1/1000}`).then(listOfRuns => {
+    fetchFile(`/scripts/getRuns.php?model=${model}&run=${run1 / 1000}`).then(listOfRuns => {
         document.getElementById('dropdownRun').innerHTML = listOfRuns;
     })
-    fetchFile(`${model}menu.html`).then(paramMenu => {
+    fetchFile(`/menu/${model}menu.html`).then(paramMenu => {
         document.getElementById("parametersMenu").innerHTML = paramMenu;
     })
     reloadImages();
-    
-    
+
+
 }
