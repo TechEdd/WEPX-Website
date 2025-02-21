@@ -64,39 +64,19 @@ self.onmessage = function (event) {
 
 // Helper function to find color for a value
 function getColorForValue(value, colorTable, isInverted) {
-    let lastIndex = colorTable.length - 1;
-
-    // Fast return for out-of-bounds values
     if (value <= colorTable[0].value) return colorTable[0].color;
-    if (value >= colorTable[lastIndex].value) return colorTable[lastIndex].color;
+    if (value >= colorTable[colorTable.length - 1].value) return colorTable[colorTable.length - 1].color;
 
-    // Binary search for efficiency
-    let low = 0, high = lastIndex;
-    while (low < high - 1) {
-        let mid = (low + high) >> 1;
-        if (colorTable[mid].value <= value) low = mid;
-        else high = mid;
+    for (let i = 0; i < colorTable.length - 1; i++) {
+        let c1 = colorTable[i], c2 = colorTable[i + 1];
+        if (value >= c1.value && value <= c2.value) {
+            let t = (value - c1.value) / (c2.value - c1.value);
+            let color = c1.color.map((c, j) => Math.round(c + (c2.color[j] - c) * t));
+            return isInverted ? color.reverse() : color;
+        }
     }
 
-    let c1 = colorTable[low], c2 = colorTable[high];
-    let t = (value - c1.value) / (c2.value - c1.value);
-
-    let color = [
-        c1.color[0] + t * (c2.color[0] - c1.color[0]),
-        c1.color[1] + t * (c2.color[1] - c1.color[1]),
-        c1.color[2] + t * (c2.color[2] - c1.color[2]),
-        c1.color[3] + t * (c2.color[3] - c1.color[3])
-    ];
-
-    if (isInverted) {
-        let temp = color;
-        color = [
-            temp[3], temp[2], temp[1], temp[0] // Reverse manually for speed
-        ];
-    }
-
-    return color;
+    return [0, 0, 0, 0]; // Default if something goes wrong
 }
-
 
 
