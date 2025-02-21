@@ -10,7 +10,7 @@
 	};
 
 	function getLastRun($model){
-		$path = "../downloads/" . $model;
+		$path = __DIR__ . "/downloads/" . $model;
 		// Check if the path is a directory
 		if (is_dir($path)) {
 			// Scan the directory for folders

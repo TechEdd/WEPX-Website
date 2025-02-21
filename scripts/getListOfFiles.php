@@ -19,11 +19,11 @@ $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
 $level = sanitizeFilename($_GET['level'] ?? 'lev_surface');
 
 // Define the directory to search
-$directory = "../downloads/$model/$run/";
+$directory = "./downloads/$model/$run/";
 
 if ($request == "model"){
 // Define the directory to search
-$directory = "../downloads/$model/$run/";
+$directory = "./downloads/$model/$run/";
 } else {
 	die("wrong request");
 }

@@ -5,7 +5,7 @@ $variable = $_GET['variable'];
 		$safeVariable = basename($variable);
 
 		// Construct the file path
-		$filePath = "../colormaps/" . $safeVariable . ".txt";
+		$filePath = "colormaps/" . $safeVariable . ".txt";
 
 		// Check if the file exists
 		if (file_exists($filePath)) {
