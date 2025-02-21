@@ -23,7 +23,7 @@ $directory = "./downloads/$model/$run/";
 
 if ($request == "model"){
 // Define the directory to search
-$directory = "./downloads/$model/$run/";
+$directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/$model/$run/";
 } else {
 	die("wrong request");
 }

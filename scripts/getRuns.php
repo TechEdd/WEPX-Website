@@ -22,7 +22,7 @@
 	};
 
 	// Define the path
-	$path = __DIR__ . "/downloads/" . $model;
+	$path = $_SERVER['DOCUMENT_ROOT'] . "/downloads/" . $model;
 
 	// Check if the path is a directory
 	if (is_dir($path)) {
