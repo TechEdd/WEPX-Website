@@ -65,32 +65,33 @@ self.onmessage = function (event) {
 // Helper function to find color for a value
 function getColorForValue(value, colorTable) {
     let len = colorTable.length;
-    if (len < 2) return [0, 0, 0, 0];
+    if (len < 2) return new Uint8Array([0, 0, 0, 0]);
 
-    // Early return for out-of-bounds values
+    // Early returns
     if (value <= colorTable[0].value) return colorTable[0].color;
     if (value >= colorTable[len - 1].value) return colorTable[len - 1].color;
 
-    // Binary search for the correct interval
-    let low = 0, high = len - 1;
+    // Binary search
+    let low = 0, high = len - 1, mid;
     while (low < high - 1) {
-        let mid = (low + high) >> 1;
-        if (colorTable[mid].value <= value) low = mid;
-        else high = mid;
+        mid = (low + high) >> 1;
+        low = colorTable[mid].value <= value ? mid : low;
+        high = colorTable[mid].value > value ? mid : high;
     }
 
-    // Get stops and interpolation factor
+    // Compute interpolation factor
     let stop1 = colorTable[low], stop2 = colorTable[high];
     let t = (value - stop1.value) / (stop2.value - stop1.value);
     let c1 = stop1.color, c2 = stop2.color;
 
-    // Inline linear interpolation using bitwise OR for fast rounding
-    return [
-        (c1[0] + t * (c2[0] - c1[0])) | 0,
-        (c1[1] + t * (c2[1] - c1[1])) | 0,
-        (c1[2] + t * (c2[2] - c1[2])) | 0,
-        (c1[3] + t * (c2[3] - c1[3])) | 0
-    ];
+    // Pre-allocate typed array for speed
+    return new Uint8Array([
+        c1[0] + t * (c2[0] - c1[0]) | 0,
+        c1[1] + t * (c2[1] - c1[1]) | 0,
+        c1[2] + t * (c2[2] - c1[2]) | 0,
+        c1[3] + t * (c2[3] - c1[3]) | 0
+    ]);
 }
+
 
 
