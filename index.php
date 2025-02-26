@@ -72,6 +72,13 @@
 		  background: #555; 
 		}
 
+		p {
+			font-family: monospace;
+			color: lightgray;
+			font-size: small;
+			    line-height: 0;
+		}
+
         #timeline_control {
             position: fixed;
             width: 82vw;
@@ -236,17 +243,18 @@
 		/* Links inside dropdown */
 		.dropdown-content a {
 		  display: block;
-		  padding: 5px;
+		  padding: 4px;
 		  text-decoration: none;
 		  color: white;
 		  cursor: pointer;
 		  width: 100%;
 		  box-sizing: border-box;
+		  line-height: 1.2;
 		}
 
 		/* Change link color on hover */
 		.dropdown-content a:hover {
-		  background-color: #f1f1f1;
+		      background-color: #333;
 		}
 
 		/* Sub-dropdown styling */
@@ -286,7 +294,7 @@
 			// Remove any directory traversal attempts or file paths
 			$input = basename($input);
 			// Optionally, ensure the input contains only safe characters
-			return preg_replace('/[^a-zA-Z0-9_-]/', '', $input);
+			return preg_replace('/[^a-zA-Z0-9._-]/', '', $input);
 		} 
 	?>
 	let request = "<?php echo sanitizeFilename($_GET['request'] ?? 'model'); ?>";
