@@ -294,7 +294,7 @@
 			// Remove any directory traversal attempts or file paths
 			$input = basename($input);
 			// Optionally, ensure the input contains only safe characters
-			return preg_replace('/[^a-zA-Z0-9._-]/', '', $input);
+			return preg_replace('/[^a-zA-Z0-9()._-]/', '', $input);
 		} 
 	?>
 	let request = "<?php echo sanitizeFilename($_GET['request'] ?? 'model'); ?>";
