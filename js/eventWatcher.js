@@ -1,4 +1,4 @@
-const eventSource = new EventSource(`/scipts/eventWatcher.php?model=${model}&run=${run1/1000}`);
+const eventSource = new EventSource(`/scripts/eventWatcher.php?model=${model}&run=${run1/1000}`);
 
 eventSource.onmessage = function (event) {
     const data = JSON.parse(event.data);
