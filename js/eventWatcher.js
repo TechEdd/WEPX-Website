@@ -9,20 +9,23 @@ eventSource.onmessage = function (event) {
 
     if (data.forecast) {
         console.log("New forecast file:", data.forecast);
-        const { img, sizeInKB } = await loadImage(data.forecast);
-        const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB } = await loadImage(imgSrc);
-        if (!stopLoadingImages) {
-            canvasList.push(canvas);
-            rgbArrayList.push(rgbArray);
-        }
-
-        // Update the main canvas if this is the first image
-    slider.dispatchEvent(new Event("input"));
-    updateSliderUI()
-
+        downloadNewFile(data.forecast);
     }
 };
 eventSource.onerror = function () {
     console.error("SSE connection lost");
     setTimeout(() => startEventWatcher(model, run), 5000); // Retry after 5 seconds
+};
+
+async function downloadNewFile(filename){
+        const { img, sizeInKB } = await loadImage(filename);
+        const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB } = await loadImage(imgSrc);
+    if (!stopLoadingImages) {
+        canvasList.push(canvas);
+        rgbArrayList.push(rgbArray);
+    }
+
+    // Update the main canvas if this is the first image
+    slider.dispatchEvent(new Event("input"));
+    updateSliderUI()
 };
