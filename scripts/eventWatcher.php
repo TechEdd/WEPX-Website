@@ -44,7 +44,13 @@ while (true) {
         $new_files = array_diff($current_files, $known_files);
         foreach ($new_files as $file) {
             if (strpos($file, $variable) !== false && strpos($file, $level) !== false && substr($file, -5) === '.webp') {
-                echo "data: " . json_encode(["forecast" => $file]) . "\n\n";
+                $jsonFilePath = preg_replace("/\.webp$/", ".json", "$run_path/$file");
+                $forecastTime = null;
+                if (file_exists($jsonFilePath)) {
+                    $metadata = json_decode(file_get_contents($jsonFilePath), true);
+                    $forecastTime = $metadata["forecastTime"] ?? null;
+                }
+                echo "data: " . json_encode(["forecast" => ["file" => $file, "forecastTime" => $forecastTime]]) . "\n\n";
                 ob_flush();
                 flush();
             }
@@ -52,5 +58,5 @@ while (true) {
         $known_files = $current_files;
     }
 
-    sleep(5); // Adjust as needed
+    sleep(5);
 }

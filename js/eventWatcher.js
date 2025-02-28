@@ -8,8 +8,9 @@ eventSource.onmessage = function (event) {
     }
 
     if (data.forecast) {
-        console.log("New forecast file:", data.forecast);
-        downloadNewFile(data.forecast);
+        console.log("New forecast file:", data.forecast.file);
+        downloadNewFile(`/downloads/${model}/${run1 / 1000}/${data.forecast.file}`);
+        data.files.push(data.forecast);
     }
 };
 eventSource.onerror = function () {
