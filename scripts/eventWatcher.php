@@ -43,7 +43,7 @@ while (true) {
         $current_files = scandir($run_path);
         $new_files = array_diff($current_files, $known_files);
         foreach ($new_files as $file) {
-            if (strpos($file, $variable) !== false && strpos($file, $level) !== false) {
+            if (strpos($file, $variable) !== false && strpos($file, $level) !== false && str_ends_with($file, '.webp')) {
                 echo "data: " . json_encode(["forecast" => $file]) . "\n\n";
                 ob_flush();
                 flush();
@@ -52,5 +52,5 @@ while (true) {
         $known_files = $current_files;
     }
 
-    sleep(5); //5 seconds to wait
+    sleep(5); // Adjust as needed
 }
