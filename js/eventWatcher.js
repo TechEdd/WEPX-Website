@@ -18,8 +18,8 @@ eventSource.onerror = function () {
 };
 
 async function downloadNewFile(filename){
-        const { img, sizeInKB } = await loadImage(filename);
-        const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB } = await loadImage(imgSrc);
+    const { img, sizeInKB } = await loadImage(filename);
+    const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB };
     if (!stopLoadingImages) {
         canvasList.push(canvas);
         rgbArrayList.push(rgbArray);
