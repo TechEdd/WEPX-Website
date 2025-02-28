@@ -25,8 +25,8 @@ async function downloadNewFile(filename,canvasIndex){
     const { img, sizeInKB } = await loadImage(filename);
     const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB);
     if (!stopLoadingImages) {
-        canvasList[] = canvas;
-        rgbArrayList[] = rgbArray;
+        canvasList[canvasIndex] = canvas;
+        rgbArrayList[canvasIndex] = rgbArray;
     }
 
     // Update the main canvas if this is the first image
