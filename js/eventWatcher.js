@@ -14,7 +14,9 @@ eventSource.onmessage = function (event) {
 };
 eventSource.onerror = function () {
     console.error("SSE connection lost");
-    setTimeout(() => startEventWatcher(model, run), 5000); // Retry after 5 seconds
+    setTimeout(() => {
+        eventSource = new EventSource(`/scripts/eventWatcher.php?model=${model}&run=${run1 / 1000}&variable=${variable}&level=${level}`);
+    }, 5000);
 };
 
 async function downloadNewFile(filename){
