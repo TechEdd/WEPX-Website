@@ -1,16 +1,16 @@
 var eventSource = new EventSource(`/scripts/eventWatcher.php?model=${model}&run=${run1/1000}&variable=${variable}&level=${level}`);
 
 eventSource.onmessage = function (event) {
-    const data = JSON.parse(event.data);
+    const eventData = JSON.parse(event.data);
 
-    if (data.run) {
-        console.log("New run detected:", data.run);
+    if (eventData.run) {
+        console.log("New run detected:", eventData.run);
     }
 
-    if (data.forecast) {
-        console.log("New forecast file:", data.forecast.file);
-        downloadNewFile(`/downloads/${model}/${run1 / 1000}/${data.forecast.file}`);
-        data.files.push(data.forecast);
+    if (eventData.forecast) {
+        console.log("New forecast file:", eventData.forecast);
+        downloadNewFile(`/downloads/${model}/${run1 / 1000}/${eventData.forecast.file}`);
+        data.files.push(eventData.forecast);
     }
 };
 eventSource.onerror = function () {
