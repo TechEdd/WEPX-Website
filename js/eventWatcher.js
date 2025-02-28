@@ -1,4 +1,9 @@
-var eventSource = new EventSource(`/scripts/eventWatcher.php?model=${model}&run=${run1/1000}&variable=${variable}&level=${level}`);
+var eventSource;
+function newEventWatcher() {
+    eventSource = new EventSource(`/scripts/eventWatcher.php?model=${model}&run=${run1 / 1000}&variable=${variable}&level=${level}`);
+}
+
+newEventWatcher();
 
 eventSource.onmessage = function (event) {
     const eventData = JSON.parse(event.data);
@@ -17,7 +22,7 @@ eventSource.onmessage = function (event) {
 eventSource.onerror = function () {
     console.error("SSE connection lost");
     setTimeout(() => {
-        eventSource = new EventSource(`/scripts/eventWatcher.php?model=${model}&run=${run1 / 1000}&variable=${variable}&level=${level}`);
+        newEventWatcher();
     }, 5000);
 };
 
