@@ -30,5 +30,6 @@ async function downloadNewFile(filename){
 
     // Update the main canvas if this is the first image
     slider.dispatchEvent(new Event("input"));
-    updateSliderUI()
+    updateSliderUI();
+    sliderMaxAvailable = data.files.length - 1;
 };
