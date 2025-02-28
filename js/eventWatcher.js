@@ -8,8 +8,8 @@ eventSource.onmessage = function (event) {
     }
 
     if (eventData.forecast) {
-        console.log("New forecast file:", eventData.forecast);
-        downloadNewFile(`/downloads/${model}/${run1 / 1000}/${eventData.forecast.file}`);
+        console.log("New forecast file:", eventData.forecast);; //gets file index from weather models filename
+        downloadNewFile(`/downloads/${model}/${run1 / 1000}/${eventData.forecast.file}`, canvasIndex);
         data.files.push(eventData.forecast);
     }
 };
@@ -20,12 +20,12 @@ eventSource.onerror = function () {
     }, 5000);
 };
 
-async function downloadNewFile(filename){
+async function downloadNewFile(filename,canvasIndex){
     const { img, sizeInKB } = await loadImage(filename);
     const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB);
     if (!stopLoadingImages) {
-        canvasList.push(canvas);
-        rgbArrayList.push(rgbArray);
+        canvasList[canvasIndex] = canvas;
+        rgbArrayList[canvasIndex] = rgbArray;
     }
 
     // Update the main canvas if this is the first image
