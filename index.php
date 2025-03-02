@@ -289,14 +289,7 @@
 		document.getElementById("map").height= document.getElementById("canvas").height;
 	}
 	let zoomMode = "map";
-	<?php 
-		function sanitizeFilename($input) {
-			// Remove any directory traversal attempts or file paths
-			$input = basename($input);
-			// Optionally, ensure the input contains only safe characters
-			return preg_replace('/[^a-zA-Z0-9()._-]/', '', $input);
-		} 
-	?>
+	<?php require 'sanitizeFilename.php'; ?>
 	let request = "<?php echo sanitizeFilename($_GET['request'] ?? 'model'); ?>";
 	let model = "<?php $model = sanitizeFilename($_GET['model'] ?? 'HRRR'); echo $model; ?>";
 	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
