@@ -1,23 +1,20 @@
 <?php
 require 'sanitizeFilename.php';
+include 'getDefaultVariable.php';
 
-//ex: getListOfFiles.php?request=model&model=HRRR&run=00&variable=CAPE&level=all_lev
 // Get URL parameters
 $request = sanitizeFilename($_GET['request'] ?? 'model');
 $model = sanitizeFilename($_GET['model'] ?? 'HRRR');
 include 'getLastRun.php';
 $run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
 $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
-$level = sanitizeFilename($_GET['level'] ?? 'lev_surface');
+$level = sanitizeFilename($_GET['level'] ?? getDefaultVariable($model, $run, $variable));
 
-// Define the directory to search
-$directory = "./downloads/$model/$run/";
-
-if ($request == "model"){
 // Define the directory to search
 $directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/$model/$run/";
-} else {
-	die("wrong request");
+
+if ($request !== "model") {
+    die("wrong request");
 }
 
 // Check if the directory exists
@@ -25,16 +22,25 @@ if (!is_dir($directory)) {
     die("Directory not found: $directory");
 }
 
-// Scan the directory for matching files
-$files = scandir($directory);
+// Function to get filtered files
+function getFilteredFiles($directory, $variable, $level) {
+    $files = scandir($directory);
+    return array_filter($files, function($file) use ($variable, $level) {
+        return preg_match("/\." . preg_quote($variable, '/') . "\." . preg_quote($level, '/') . "\.webp$/", $file);
+    });
+}
 
-// Filter files based on the criteria
-$filteredFiles = array_filter($files, function($file) use ($variable, $level) {
-    return preg_match("/\." . preg_quote($variable, '/') . "\." . preg_quote($level, '/') . "\.webp$/", $file);
-});
+// First attempt
+$filteredFiles = getFilteredFiles($directory, $variable, $level);
 
-// Prepare output data
-$output = [];
+// Retry with fallback level if no files found
+if (empty($filteredFiles)) {
+    $fallbackLevel = getDefaultVariable($model, $run, $variable);
+    if ($fallbackLevel !== $level) { // Prevent infinite loops
+        $level = $fallbackLevel;
+        $filteredFiles = getFilteredFiles($directory, $variable, $level);
+    }
+}
 
 // Prepare output data
 $vmin = null;
@@ -50,7 +56,6 @@ foreach ($filteredFiles as $file) {
     if (file_exists($jsonFilePath)) {
         $metadata = json_decode(file_get_contents($jsonFilePath), true);
 
-        // Set vmin, vmax, and run only if they are not already set
         if ($vmin === null && isset($metadata["vmin"], $metadata["vmax"], $metadata["run"])) {
             $vmin = $metadata["vmin"];
             $vmax = $metadata["vmax"];
@@ -70,7 +75,6 @@ foreach ($filteredFiles as $file) {
     }
 }
 
-
 // Output the final JSON structure
 echo json_encode([
     "vmin" => $vmin,
@@ -78,5 +82,6 @@ echo json_encode([
     "run" => $run,
     "files" => $files
 ], JSON_PRETTY_PRINT);
+
 
 ?>
