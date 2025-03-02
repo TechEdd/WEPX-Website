@@ -74,7 +74,7 @@ drawColormap(colorTable);
 async function mapColorsWithWorker(imageData, width, height, minValue, maxValue, variable, colorTable, sizeOfImage) {
 	return new Promise((resolve, reject) => {
 		//deviding by 2 for best performance
-		let numCores = navigator.hardwareConcurrency/2 || 4;
+		let numCores = navigator.hardwareConcurrency/2 || 2;
 
 		const workers = [];
 		const results = [];
@@ -183,60 +183,65 @@ async function convertToCanvasAsync(imgSrc, imgSize) {
 //squential preload
 async function preloadImagesAsync() {
 	try {
-		//wait for the other loading to wait if necessary
+		// Wait for the other loading to finish if necessary
 		allImagesLoaded = false;
 		while (stopLoadingImages) {
 			await new Promise(resolve => setTimeout(resolve, 100));
-		};
+		}
 
-		//assert the right scale for the canvas, used in converttocanvas function
+		// Ensure the correct scale for the canvas
 		newLoad = true;
 
+		let imageIndex = 0; // Counter to track the index
+
 		for (const [index, file] of data["files"].entries()) {
-			//if new variable loaded stop the loading of new files
+			// If a new load is triggered, stop loading new files
 			if (stopLoadingImages) {
 				stopLoadingImages = false;
 				console.log("restart");
 				return;
 			}
+
 			// Load the image
-            let imgSrc = "/downloads/" + model + "/" + run1/1000 + "/" + file["file"];
-			if (zoomMode == "zoomed"){
-				imgSrc = `/scripts/crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`
+			let imgSrc = "/downloads/" + model + "/" + run1 / 1000 + "/" + file["file"];
+			if (zoomMode == "zoomed") {
+				imgSrc = `/scripts/crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`;
 			}
-			const { img, sizeInKB } = await loadImage(imgSrc); // load images asynchronously
-			
+
+			const { img, sizeInKB } = await loadImage(imgSrc);
+
 			// Process the image with convertToCanvasAsync
 			console.time(imgSrc);
-            const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB);
+			const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB);
 			console.timeEnd(imgSrc);
-			// Add to canvasList and rgbArrayList
-			// last resort to keep new array clean if restarted
+
+			// Ensure new images are inserted at a specific index
 			if (!stopLoadingImages) {
-				canvasList.push(canvas);
-				rgbArrayList.push(rgbArray);
+				canvasList[imageIndex] = canvas;
+				rgbArrayList[imageIndex] = rgbArray;
+				imageIndex++; // Move to the next index
 			}
-            
-            // Update the main canvas if this is the first image
+
+			// Update the main canvas if this is the first image
 			slider.dispatchEvent(new Event("input"));
 
-			// Slider
+			// Slider updates
 			if (unavailablePercent === undefined) {
 				unavailablePercent = ((data["files"].length - 1 - slider.min) / (slider.max - slider.min)) * 100;
 			}
 			availableSlider.style.width = ((index / unavailablePercent) * 100).toString() + "%";
 			sliderMaxAvailable = index;
-
 		}
+
 		allImagesLoaded = true;
 		console.log("All images preloaded");
 		availableSlider.style.opacity = 0;
-    } catch (error) {
-        console.error("Error in preloadImagesAsync:", error);
-    }
+	} catch (error) {
+		console.error("Error in preloadImagesAsync:", error);
+	}
 }
 
-// Helper function to load an image asynchronously
+//helper function to preload image
 async function loadImage(src) {
     return new Promise((resolve, reject) => {
     const img = new Image();

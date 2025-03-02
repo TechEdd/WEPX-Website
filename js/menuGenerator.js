@@ -86,6 +86,8 @@ function updateSliderUI() {
         slider.max = 18 * 4;
     } else if (model == "NAMNEST") {
         slider.max = 60;
+    } else if (model == "HRDPS") {
+        slider.max = 48;
     }
 
     else { slider.max = 0 };
@@ -156,6 +158,10 @@ function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
 
     // Update the browser's history without refreshing the page
     window.history.replaceState({}, '', `${url.pathname}?${params.toString()}`);
+
+    // Update EventWatcher
+    eventSource.close();
+    newEventWatcher()
 }
 
 function reloadImagesPrepare() {
