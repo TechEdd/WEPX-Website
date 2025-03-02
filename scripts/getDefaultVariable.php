@@ -1,6 +1,6 @@
 <?php
-	require 'sanitizeFilename.php';
-	include 'getLastRun.php';
+	require_once 'sanitizeFilename.php';
+	include_once 'getLastRun.php';
 
 	function getDefaultVariable($model, $run, $variable){
 		// Define the directory to search

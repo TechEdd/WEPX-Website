@@ -1,11 +1,11 @@
 <?php
-require 'sanitizeFilename.php';
-include 'getDefaultVariable.php';
+require_once 'sanitizeFilename.php';
+include_once 'getDefaultVariable.php';
 
 // Get URL parameters
 $request = sanitizeFilename($_GET['request'] ?? 'model');
 $model = sanitizeFilename($_GET['model'] ?? 'HRRR');
-include 'getLastRun.php';
+include_once 'getLastRun.php';
 $run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
 $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
 $level = sanitizeFilename($_GET['level'] ?? getDefaultVariable($model, $run, $variable));

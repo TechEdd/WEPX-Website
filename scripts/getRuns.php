@@ -1,5 +1,5 @@
 <?php
-	require 'sanitizeFilename.php';
+	require_once 'sanitizeFilename.php';
 
 	function formatEpoch($epoch) {
 		return date('Y-m-d H:i', $epoch);
@@ -7,7 +7,7 @@
 	
 	if (!(isset($run) || isset($model))){
 		$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
-		include 'getLastRun.php';
+		include_once 'getLastRun.php';
 		$run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
 	}
 
