@@ -12,8 +12,10 @@
 		// Check if the directory exists
 		if (!is_dir($directory)) {
 			die("Directory not found: $directory");
-		}
-
+		};
+		
+		$files = scandir($directory);
+		
 		$match = null;
 
 		// Loop through files to find the first match
