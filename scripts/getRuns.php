@@ -2,7 +2,7 @@
 	require_once 'sanitizeFilename.php';
 
 	function formatEpoch($epoch) {
-		return date('Y-m-d H:i', $epoch);
+		return gmdate('Y-m-d H:i', $epoch);
 	}
 	
 	if (!(isset($run) || isset($model))){
@@ -23,7 +23,7 @@
 		foreach ($folders as $folder) {
 			$run = basename($folder); // Extract the folder name
 
-			echo '<a href="javascript:(function(){updateUrlVariable(\'run\', \'' . htmlspecialchars($run) . '\');reloadImagesPrepare()})()">' . formatEpoch($run) . '</a>';
+			echo '<a href="javascript:(function(){updateUrlVariable(\'run\', \'' . htmlspecialchars($run) . '\');reloadImagesPrepare()})()">' . formatEpoch($run) . 'z</a>';
 		}
 	} else {
 		echo '<p>Invalid path or no folders found.</p>';
