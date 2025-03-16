@@ -1,5 +1,5 @@
 self.onmessage = function (event) {
-    const { imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable } = event.data;
+    const { imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable, radar } = event.data;
 
 	// Precompute constants
 	const imageSize = width * height;
@@ -22,16 +22,24 @@ self.onmessage = function (event) {
 		let nodataRGB;
 
 		// Convert RGBA to scaled value
-		if (a !== 0) {
-			const intValue = (r << 16) | (g << 8) | b; // 24-bit RGB
-			scaledValue = (intValue * valueScale) + minValue;
+		if (!radar) {
+			if (a !== 0) {
+				const intValue = (r << 16) | (g << 8) | b; // 24-bit RGB
+				scaledValue = (intValue * valueScale) + minValue;
 
+				nodataRGB = isInvertedColormap
+					? scaledValue === maxValue
+					: scaledValue === minValue;
+			} else {
+				nodataRGB = true;
+			}
+		} else {
+			scaledValue = (intValue * valueScale) + minValue;
 			nodataRGB = isInvertedColormap
 				? scaledValue === maxValue
 				: scaledValue === minValue;
-		} else {
-			nodataRGB = true;
 		}
+		
 
 		rgbArray[index] = scaledValue; // Store float value in Float32Array
 

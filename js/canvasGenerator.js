@@ -127,7 +127,8 @@ async function mapColorsWithWorker(imageData, width, height, minValue, maxValue,
 				minValue,
 				maxValue,
 				isInvertedColormap,
-				colorTable
+				colorTable,
+				(request=="radar")
 			}, [chunkImageData.buffer]);
 		}
 	});
