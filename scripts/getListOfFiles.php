@@ -4,17 +4,21 @@ include_once 'getDefaultVariable.php';
 
 // Get URL parameters
 $request = sanitizeFilename($_GET['request'] ?? 'model');
-$model = sanitizeFilename($_GET['model'] ?? 'HRRR');
-include_once 'getLastRun.php';
-$run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
-$variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
-$level = sanitizeFilename($_GET['level'] ?? getDefaultVariable($model, $run, $variable));
-
-// Define the directory to search
-$directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/$model/$run/";
-
-if ($request !== "model") {
+if ($request != "model" && $request != "radar") {
     die("wrong request");
+}
+include_once 'getLastRun.php';
+if ($request == "model"){
+    $model = sanitizeFilename($_GET['model'] ?? 'HRRR');
+    $run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
+    $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
+    $level = sanitizeFilename($_GET['level'] ?? getDefaultVariable($model, $run, $variable));
+    $directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/$model/$run/";
+} else if ($request == "radar"){
+    $model = sanitizeFilename($_GET['model'] ?? 'CASBV');
+    $level = sanitizeFilename($_GET['level'] ?? "tilt1");
+    $variable = sanitizeFilename($_GET['variable'] ?? 'reflectivity_horizontal');
+    $directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/radars/$model/";
 }
 
 // Check if the directory exists
@@ -23,22 +27,33 @@ if (!is_dir($directory)) {
 }
 
 // Function to get filtered files
-function getFilteredFiles($directory, $variable, $level) {
-    $files = scandir($directory);
-    return array_filter($files, function($file) use ($variable, $level) {
-        return preg_match("/\." . preg_quote($variable, '/') . "\." . preg_quote($level, '/') . "\.webp$/", $file);
-    });
+function getFilteredFiles($directory, $variable, $level, $request) {
+    if ($request == "radar"){
+        $files = scandir($directory);
+        return array_filter($files, function($file) use ($variable, $level) {
+            return preg_match("/" . preg_quote($variable, '/') . "\." . preg_quote($level, '/') . "\..*\.webp$/", $file);
+        });
+	} else if ($request == "model"){
+        $files = scandir($directory);
+        return array_filter($files, function($file) use ($variable, $level) {
+            return preg_match("/\." . preg_quote($variable, '/') . "\." . preg_quote($level, '/') . "\.webp$/", $file);
+        });
+    };
 }
 
 // First attempt
-$filteredFiles = getFilteredFiles($directory, $variable, $level);
+$filteredFiles = getFilteredFiles($directory, $variable, $level, $request);
 
 // Retry with fallback level if no files found
 if (empty($filteredFiles)) {
-    $fallbackLevel = getDefaultVariable($model, $run, $variable);
+    if ($request == "radar"){
+        $fallbackLevel = "tilt1";
+    } else if ($request == "model"){
+        $fallbackLevel = getDefaultVariable($model, $run, $variable);
+    };
     if ($fallbackLevel !== $level) { // Prevent infinite loops
         $level = $fallbackLevel;
-        $filteredFiles = getFilteredFiles($directory, $variable, $level);
+        $filteredFiles = getFilteredFiles($directory, $variable, $level,$request);
     }
 }
 
@@ -46,7 +61,6 @@ if (empty($filteredFiles)) {
 $vmin = null;
 $vmax = null;
 $run = null;
-$nodata = null;
 $files = [];
 
 foreach ($filteredFiles as $file) {
@@ -56,32 +70,46 @@ foreach ($filteredFiles as $file) {
     if (file_exists($jsonFilePath)) {
         $metadata = json_decode(file_get_contents($jsonFilePath), true);
 
-        if ($vmin === null && isset($metadata["vmin"], $metadata["vmax"], $metadata["run"])) {
+        // Ensure vmin and vmax are taken from the first valid metadata
+        if (isset($metadata["vmin"], $metadata["vmax"])) {
             $vmin = $metadata["vmin"];
             $vmax = $metadata["vmax"];
+        }
+
+        // Ensure run is set for model
+        if ($request == "model" && isset($metadata["run"])) {
             $run = $metadata["run"];
         }
 
-        $files[] = [
-            "file" => $file,
-            "forecastTime" => $metadata["forecastTime"] ?? null
-        ];
+        $fileData = ["file" => $file];
+
+        if ($request == "radar") {
+            // Include radar-specific fields
+            foreach (["scanStart", "sweepStart", "sweepStop", "scanType"] as $key) {
+                if (isset($metadata[$key])) {
+                    $fileData[$key] = $metadata[$key];
+                }
+            }
+        } else {
+            // Default model fields
+            $fileData["forecastTime"] = $metadata["forecastTime"] ?? null;
+        }
+
+        $files[] = $fileData;
     } else {
-        $files[] = [
-            "file" => $file,
-            "run" => null,
-            "forecastTime" => null
-        ];
+        $files[] = ["file" => $file];
     }
 }
 
 // Output the final JSON structure
-echo json_encode([
-    "vmin" => $vmin,
-    "vmax" => $vmax,
-    "run" => $run,
-    "files" => $files
-], JSON_PRETTY_PRINT);
+$response = ["vmin" => $vmin, "vmax" => $vmax, "files" => $files];
+
+if ($request == "model") {
+    $response["run"] = $run;
+}
+
+echo json_encode($response, JSON_PRETTY_PRINT);
+
 
 
 ?>
