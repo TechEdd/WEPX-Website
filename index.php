@@ -289,14 +289,19 @@
 		document.getElementById("map").height= document.getElementById("canvas").height;
 	}
 	let zoomMode = "map";
-	<?php require 'sanitizeFilename.php'; ?>
+	<?php require 'scripts/sanitizeFilename.php'; ?>
 	let request = "<?php echo sanitizeFilename($_GET['request'] ?? 'model'); ?>";
 	let model = "<?php $model = sanitizeFilename($_GET['model'] ?? 'HRRR'); echo $model; ?>";
 	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
 	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
 	let data = <?php require 'scripts/getListOfFiles.php'; ?>;
-	let run1 = data["run"]*1000;
-	var runNb = new Date(parseInt(run1)).getUTCHours();
+	if (request == "model"){
+		var run1 = data["run"]*1000;
+		var runNb = new Date(parseInt(run1)).getUTCHours();
+	}
+	if (request == "radar"){
+		radarInfo = <?php echo json_encode(json_decode(file_get_contents('radar_latlon.json'), true)[$model] ?? 'radar not in json'); ?>;
+	}
 	var minValue = data["vmin"];
 	var maxValue = data["vmax"];
 	//let isInvertedColormap = (variable === "CIN" || variable === "SBT124" || minValue>maxValue);
@@ -305,6 +310,9 @@
 		if ($variable) {
 			// Sanitize the variable to prevent directory traversal attacks
 			$safeVariable = basename($variable);
+			if (str_contains($safeVariable, "reflectivity")){
+				$safeVariable = "REFC";
+			};
 
 			// Construct the file path
 			$filePath = "colormaps/" . $safeVariable . ".txt";
@@ -324,10 +332,31 @@
 
 	?>
 
+	function getRadarLocationString(radarID) {
+		// Select all anchor elements within the #radars div
+		const anchors = document.querySelectorAll('#radars a');
+
+		// Iterate over anchors and find the one containing the specified radarID
+		for (let anchor of anchors) {
+			if (anchor.textContent.trim() === radarID) {
+				return anchor.getAttribute('title'); // Get the title attribute
+			}
+		}
+
+		// Return null if no match is found
+		return null;
+}
+
 	window.onload = function() {
-            document.getElementById("modelIndicator").innerHTML = "Model: " + model;
-            document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+		if (request=="model"){
+			document.getElementById("modelIndicator").innerHTML = "Model: " + model;
 			document.getElementById("runSelect").innerHTML = "Run: " +  new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
+		} else if (request=="radar"){
+			document.getElementById("modelIndicator").innerHTML = "Radar: " + model + " (" + getRadarLocationString(model) + ")";
+		}
+
+        document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+			
     };
 
 	//inverted colormaps
@@ -402,8 +431,7 @@
 	
 </body>
 </html>
-<script src="js/image_processing.js"></script>
 <script src="js/imageContainer.js"></script>
 <script src="js/canvasGenerator.js"></script>
 <script src="js/menuGenerator.js"></script>
-<script src="js/eventWatcher.js"></script>
+<!-- <script src="js/eventWatcher.js"></script> -->
