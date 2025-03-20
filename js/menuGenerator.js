@@ -1,4 +1,5 @@
 var unavailablePercent;
+var colormapDiv = document.getElementById("colormapDiv")
 // dropdownmenu
 // Function to toggle dropdown visibility
 function toggleDropdown(id) {
@@ -90,7 +91,7 @@ function updateSliderUI() {
         slider.max = 48;
     }
 
-    else { slider.max = 0 };
+    else { slider.max = 100 };
     const max = parseInt(slider.max);
     const sliderWidth = sliderContainer.offsetWidth;
 
@@ -106,14 +107,20 @@ function updateSliderUI() {
     unavailableRectangle.style.width = `${100 - unavailablePercent}%`;
 }
 
-function epochToTimestamp(epoch) {
+function epochToTimestamp(epoch, seconds = false) {
     const date = new Date(epoch * 1000); // Convert epoch to milliseconds
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are zero-indexed
     const day = String(date.getDate()).padStart(2, '0');
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}`;
+    if (seconds) {
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    } else {
+        return `${year}-${month}-${day} ${hours}:${minutes}`;
+    }
+    
 }
 
 // Initialize the slider and attach event listener
@@ -137,7 +144,18 @@ slider.addEventListener('input', () => {
     canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
     canvas.getContext('2d').drawImage(canvasList[slider.value], 0, 0, canvas.width, canvas.height);
     determineDistance(canvasList[slider.value]);
-    forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["forecastTime"]);
+    if (request == "model") {
+        forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["forecastTime"]);
+        colormapDiv.style.bottom = "12vh";
+        document.getElementById("sweepInfo").remove();
+    } else if (request == "radar") {
+        forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["sweepStart"]);
+        colormapDiv.style.bottom = "24vh";
+        colormapDiv.insertAdjacentHTML('afterend',
+            `<div id="sweepInfo" style="font-size:10px;bottom:12vh;position:absolute;right:1vw;background:rgb(176,176,176);font-family:monospace;padding:10px;"
+            >Scan Start: ${epochToTimestamp(data["files"][slider.value]["scanStart"], seconds = true)}<br>Sweep Start: ${epochToTimestamp(data["files"][slider.value]["sweepStart"], seconds = true)}<br> Sweep End: ${epochToTimestamp(data["files"][slider.value]["sweepStop"], seconds = true)}<br> Radar Mode: ${data["files"][slider.value]["scanType"]}</div>`);
+    }
+    
     if (zoomMode == "map") {
         if (isLeftPressed) {
             isDragging = true;
