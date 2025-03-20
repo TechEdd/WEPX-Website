@@ -310,7 +310,7 @@
 		if ($variable) {
 			// Sanitize the variable to prevent directory traversal attacks
 			$safeVariable = basename($variable);
-			if (str_contains($safeVariable, "reflectivity")){
+			if (strpos($safeVariable, "reflectivity")){
 				$safeVariable = "REFC";
 			};
 
