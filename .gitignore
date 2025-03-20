@@ -364,5 +364,7 @@ FodyWeavers.xsd
 /full_map.webp
 /full_map.svg
 /DPT.lev_2_m_above_ground.01.webp
-/downloads/HRRR
-/downloads/HRRRSH
+/downloads/
+/colormaps/
+/model_extent.json
+/radar_latlon.json
