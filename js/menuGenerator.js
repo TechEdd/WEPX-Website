@@ -147,7 +147,7 @@ slider.addEventListener('input', () => {
     if (request == "model") {
         forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["forecastTime"]);
         colormapDiv.style.bottom = "12vh";
-        document.getElementById("sweepInfo").remove();
+        if (document.getElementById("sweepInfo") != null) document.getElementById("sweepInfo").remove();
     } else if (request == "radar") {
         forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["sweepStart"]);
         colormapDiv.style.bottom = "24vh";
