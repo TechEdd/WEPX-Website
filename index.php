@@ -434,4 +434,4 @@
 <script src="js/imageContainer.js"></script>
 <script src="js/canvasGenerator.js"></script>
 <script src="js/menuGenerator.js"></script>
-<!-- <script src="js/eventWatcher.js"></script> -->
+<script src="js/eventWatcher.js"></script>
