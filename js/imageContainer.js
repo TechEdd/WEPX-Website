@@ -20,12 +20,19 @@ const moveSpeed = 10;
 const fullmapbbox = [-180, -90, 180, 90];
 //futurely get in model_extent.json
 //futurely get in model_extent.json
-let forecastbbox = getForecastBbox(model);
+if (request == "model") {
+	var forecastbbox = getForecastBbox(model);
+}
 let rectBBox = null;
 
 // Define the resolution of the main image
-const desiredWidth = canvas.width = 3000;
-const desiredHeight = canvas.height = 1290;
+if (request == "model") {
+	var desiredWidth = canvas.width = 3000;
+	var desiredHeight = canvas.height = 1290;
+} else if (request == "radar") {
+	var desiredWidth = canvas.width = 3000;
+	var desiredHeight = canvas.height = 3000;
+}
 
 // Select all images inside the container
 const images = document.querySelectorAll('.image');
@@ -37,7 +44,7 @@ const imageScales = {
 };
 //temporary solution, bbox need to be in getFiles from php (future hurricane models)
 function getForecastBbox(model) {
-	const forecastbbox = {
+	var forecastbbox = {
 		"HRRR": [
 			-134.12142793280148,
 			21.14706163554821,
@@ -392,9 +399,9 @@ async function getTouchDistance(e) {
 // Prevent right-click context menu
 innerContainer.addEventListener('contextmenu', (e) => e.preventDefault());
 
+
 //move image to correct lat lon
 function determineDistance(canvasObj) {
-
 	// Map dimensions in pixels (you need to know these dimensions)
 	const mapPixelWidth = canvasObj.width;  // Same as image
 	const mapPixelHeight = canvasObj.width / 2; // /2 because of aspect ratio of platecarree
@@ -443,7 +450,7 @@ function scaleImages() {
 	const images = innerContainer.querySelectorAll(('canvas'));
 	let loadedImagesCount = 0;
 
-	map.Width = desiredWidth
+	map.Width = desiredWidth;
 	map.height = desiredWidth / 2; // /2 because of aspect ratio of platecarree
 
 	// Function to check if all images are loaded
