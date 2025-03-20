@@ -35,8 +35,131 @@ function rescaleColorTable(minValue, maxValue, colorTable) {
 		};
 	});
 }
+function getRadarBBOX(radarInfo) {
+	const radarLat = radarInfo.lat;
+	const radarLon = radarInfo.lon;
+	const maxRange = parseFloat(radarInfo.range);
+	const earthRadius = 6371000;
+	const latRad = radarLat * Math.PI / 180;
 
+	const angularDistance = maxRange / earthRadius;
+	const latRange = angularDistance * (180 / Math.PI); // Max lat change
+	const lonRange = latRange / Math.cos(latRad);       // Max lon change
 
+	return [
+		radarLon - lonRange, // minLon
+		radarLat - latRange, // minLat
+		radarLon + lonRange, // maxLon
+		radarLat + latRange  // maxLat
+	];
+}
+
+function renderPPI(ctx, imageData, width, height, shouldLiveUpdate, isPlateCarree = false, radarInfo=null) {
+	const data = imageData.data;
+	const N = height;  // Number of azimuths (scan lines)
+	const M = width;   // Number of range bins (radial resolution)
+	const R = Math.min(ctx.canvas.width, ctx.canvas.height) / 2;
+	const cx = R, cy = R; // Center of canvas
+
+	// Radar info for Plate Carrée
+	const radarLat = radarInfo.lat;    // Radar latitude in degrees
+	const radarLon = radarInfo.lon;    // Radar longitude in degrees
+	const maxRange = parseFloat(radarInfo.range); // Maximum range in meters
+	const earthRadius = 6371000; // Earth's radius in meters
+
+	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+	// Apply 90° rotation only for polar rendering
+	if (!isPlateCarree) {
+		ctx.save();
+		ctx.translate(0, ctx.canvas.height);
+		ctx.rotate(-Math.PI / 2);
+	} else {
+		ctx.save(); // Still save context for restoration
+	}
+
+	let i = 0; // Track the current azimuth
+	const batchSize = Math.max(1, Math.floor(N / 120)); // Render ~60 frames
+
+	function drawAzimuth(i) {
+		let theta = (i / N) * 2 * Math.PI; // Azimuth angle in radians
+
+		for (let j = 0; j < M; j++) {
+			let srcIdx = (i * M + j) * 4;
+			if (data[srcIdx + 3] === 0) continue; // Skip fully transparent pixels
+
+			let x, y, rotateAngle;
+			let pixelSize = Math.max(1.5, (0.3 + 0.7 * Math.pow(j / M, 0.7)) * (R / M) * 4);
+			let alpha = data[srcIdx + 3] / 255;
+
+			if (isPlateCarree) {
+				// Plate Carrée projection
+				let range = (j / M) * maxRange;
+				let latRad = radarLat * Math.PI / 180;
+				let lonRad = radarLon * Math.PI / 180;
+				let angularDistance = range / earthRadius;
+				let azimuthRad = theta;
+
+				let newLatRad = Math.asin(
+					Math.sin(latRad) * Math.cos(angularDistance) +
+					Math.cos(latRad) * Math.sin(angularDistance) * Math.cos(azimuthRad)
+				);
+				let newLonRad = lonRad + Math.atan2(
+					Math.sin(azimuthRad) * Math.sin(angularDistance) * Math.cos(latRad),
+					Math.cos(angularDistance) - Math.sin(latRad) * Math.sin(newLatRad)
+				);
+
+				let newLat = newLatRad * 180 / Math.PI;
+				let newLon = newLonRad * 180 / Math.PI;
+
+				// Adjust scaling for proper compression
+				let latRange = (maxRange / earthRadius) * (180 / Math.PI); // Latitude range in degrees
+				let lonRange = latRange / Math.cos(latRad); // Longitude range adjusted for latitude
+
+				// Map to canvas, compress y-axis relative to x-axis
+				x = cx + ((newLon - radarLon) / lonRange) * R;
+				y = cy - ((newLat - radarLat) / latRange) * R * Math.cos(latRad); // Compress y by cos(latitude)
+				rotateAngle = 0; // No rotation in Plate Carrée
+			} else {
+				// Original polar rendering
+				let r = (j / M) * R;
+				x = cx + r * Math.cos(theta);
+				y = cy + r * Math.sin(theta);
+				rotateAngle = theta; // Rotate according to azimuth
+			}
+
+			ctx.save();
+			ctx.translate(x, y);
+			ctx.rotate(rotateAngle);
+			ctx.fillStyle = `rgba(${data[srcIdx]}, ${data[srcIdx + 1]}, ${data[srcIdx + 2]}, ${alpha})`;
+			ctx.fillRect(-pixelSize / 2, -pixelSize / 2, pixelSize, pixelSize * 1.5);
+			ctx.restore();
+		}
+	}
+
+	function drawNextBatch() {
+		let maxI = Math.min(i + batchSize, N);
+
+		for (; i < maxI; i++) {
+			drawAzimuth(i);
+		}
+
+		if (shouldLiveUpdate && i < N) {
+			requestAnimationFrame(drawNextBatch);
+		} else if (!shouldLiveUpdate && i >= N) {
+			ctx.restore();
+		}
+	}
+
+	if (shouldLiveUpdate) {
+		drawNextBatch();
+	} else {
+		for (i = 0; i < N; i++) {
+			drawAzimuth(i);
+		}
+		ctx.restore();
+	}
+}
 async function drawColormap(colorTable) {
 	const colormapCanvas = document.getElementById("colormapCanvas");
 	colormapCanvas.innerHTML = "";
@@ -119,7 +242,7 @@ async function mapColorsWithWorker(imageData, width, height, minValue, maxValue,
 			const chunkImageData = imageData.slice(startRow * width * 4, endRow * width * 4);
 
 			transferableObjects.push(chunkImageData.buffer);
-
+			let isRadar = (request == "radar");
 			worker.postMessage({
 				imageData: chunkImageData,
 				width,
@@ -128,7 +251,7 @@ async function mapColorsWithWorker(imageData, width, height, minValue, maxValue,
 				maxValue,
 				isInvertedColormap,
 				colorTable,
-				(request=="radar")
+				isRadar
 			}, [chunkImageData.buffer]);
 		}
 	});
@@ -145,20 +268,25 @@ async function convertToCanvasAsync(imgSrc, imgSize) {
 
 		//assert the right scale for the canvas
 		if (newLoad) {
-			document.getElementById("canvas").width = canvas.width;
-			document.getElementById("canvas").height = canvas.height;
+			if (request == "model") {
+				document.getElementById("canvas").width = canvas.width;
+				document.getElementById("canvas").height = canvas.height;
+			} else if (request == "radar") {
+				document.getElementById("canvas").width = canvas.width = 3000;
+				document.getElementById("canvas").height = canvas.height = 3000;
+			}
 			newLoad = false;
 		}
 
 		ctx.drawImage(imgSrc, 0, 0);
 		
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+		const imageData = ctx.getImageData(0, 0, imgSrc.width, imgSrc.height);
 		temp1 = imageData;
         // Use the worker to process the RGBA data and apply the color mapping
         const { rgbArray, imageDataArray } = await mapColorsWithWorker(
             imageData.data, // Raw image data
-            canvas.width,
-            canvas.height,
+			imgSrc.width,
+			imgSrc.height,
             minValue,
             maxValue,
             variable,
@@ -169,10 +297,15 @@ async function convertToCanvasAsync(imgSrc, imgSize) {
         // Create ImageData and draw it back on the canvas
         const processedImageData = new ImageData(
             new Uint8ClampedArray(imageDataArray),
-            canvas.width,
-            canvas.height
-        );
-        ctx.putImageData(processedImageData, 0, 0);
+			imgSrc.width, imgSrc.height
+		);
+		if (request == "model") {
+			ctx.putImageData(processedImageData, 0, 0);
+		}
+		else if (request == "radar") {
+			renderPPI(ctx, processedImageData, imgSrc.width, imgSrc.height, false, false, radarInfo);
+			forecastbbox = getRadarBBOX(radarInfo);
+		}
 
 		return {rgbArray, canvas};
     } catch (error) {
@@ -202,9 +335,14 @@ async function preloadImagesAsync() {
 				console.log("restart");
 				return;
 			}
-
+			let imgSrc;
 			// Load the image
-			let imgSrc = "/downloads/" + model + "/" + run1 / 1000 + "/" + file["file"];
+			if (request == "model") {
+				imgSrc = "/downloads/" + model + "/" + run1 / 1000 + "/" + file["file"];
+			} else if (request == "radar") {
+				imgSrc = "/downloads/radars/" + model + "/" + file["file"];
+			}
+			
 			if (zoomMode == "zoomed") {
 				imgSrc = `/scripts/crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`;
 			}
