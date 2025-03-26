@@ -4,6 +4,7 @@ const slider = document.getElementById('range-slider');
 const canvas = document.getElementById('canvas');
 const forecastTimeText = document.getElementById("forecastTime");
 const map = document.getElementById("map");
+let radarImagesToSee = 10;
 let hrMapLoaded = false;
 let animationFrameId;
 let isDragging = false;
