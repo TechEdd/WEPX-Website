@@ -89,6 +89,9 @@ function updateSliderUI() {
         slider.max = 60;
     } else if (model == "HRDPS") {
         slider.max = 48;
+    } else if (request == "radar") {
+        slider.max = data["files"].length;
+        slider.min = slider.max - radarImagesToSee;
     }
 
     else { slider.max = 100 };
@@ -150,11 +153,24 @@ slider.addEventListener('input', () => {
         if (document.getElementById("sweepInfo") != null) document.getElementById("sweepInfo").remove();
     } else if (request == "radar") {
         forecastTimeText.innerHTML = epochToTimestamp(data["files"][slider.value]["sweepStart"]);
-        colormapDiv.style.bottom = "24vh";
-        colormapDiv.insertAdjacentHTML('afterend',
-            `<div id="sweepInfo" style="font-size:10px;bottom:12vh;position:absolute;right:1vw;background:rgb(176,176,176);font-family:monospace;padding:10px;"
-            >Scan Start: ${epochToTimestamp(data["files"][slider.value]["scanStart"], seconds = true)}<br>Sweep Start: ${epochToTimestamp(data["files"][slider.value]["sweepStart"], seconds = true)}<br> Sweep End: ${epochToTimestamp(data["files"][slider.value]["sweepStop"], seconds = true)}<br> Radar Mode: ${data["files"][slider.value]["scanType"]}</div>`);
+        if (document.getElementById("sweepInfo")) {
+            document.getElementById("sweepInfo").innerHTML = `
+            Scan Start: ${ epochToTimestamp(data["files"][slider.value]["scanStart"], seconds = true) } <br
+            >Sweep Start: ${epochToTimestamp(data["files"][slider.value]["sweepStart"], seconds = true)}<br
+            > Sweep End: ${epochToTimestamp(data["files"][slider.value]["sweepStop"], seconds = true)}<br
+            > Radar Mode: ${data["files"][slider.value]["scanType"]}</div>`;
+        } else {
+            colormapDiv.style.bottom = "24vh";
+            colormapDiv.insertAdjacentHTML('afterend',
+                `<div id="sweepInfo" style="font-size:10px;bottom:12vh;position:absolute;right:1vw;background:rgb(176,176,176);font-family:monospace;padding:10px;"
+            >Scan Start: ${epochToTimestamp(data["files"][slider.value]["scanStart"], seconds = true)}<br
+            >Sweep Start: ${epochToTimestamp(data["files"][slider.value]["sweepStart"], seconds = true)}<br
+            > Sweep End: ${epochToTimestamp(data["files"][slider.value]["sweepStop"], seconds = true)}<br
+            > Radar Mode: ${data["files"][slider.value]["scanType"]}</div>`);
+        }
+        
     }
+
     
     if (zoomMode == "map") {
         if (isLeftPressed) {
@@ -178,8 +194,12 @@ function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
     window.history.replaceState({}, '', `${url.pathname}?${params.toString()}`);
 
     // Update EventWatcher
-    eventSource.close();
-    newEventWatcher()
+	try{	
+		eventSource.close();
+		newEventWatcher()
+	} catch {
+		
+	}
 }
 
 function reloadImagesPrepare() {
