@@ -194,77 +194,121 @@ async function drawColormap(colorTable) {
 }
 drawColormap(colorTable);
 
-async function mapColorsWithWorker(imageData, width, height, minValue, maxValue, variable, colorTable, sizeOfImage) {
+async function mapColorsWithWorker(imageData, width, height, minValue, maxValue, variable, colorTable) {
 	return new Promise((resolve, reject) => {
-		//deviding by 2 for best performance
-		let numCores = navigator.hardwareConcurrency/2 || 2;
+		// Check WebGL support first to determine number of cores
+		const hasWebGL = !!window.WebGLRenderingContext &&
+			!!document.createElement('canvas').getContext('webgl');
+		const isRadar = variable == "radar";
+		let workerScript;
+		var numCores = 1;
+		if (isRadar) {
+			workerScript = "/js/arrayWorkers.js";
+			numCores = Math.min(
+				Math.max(1, (navigator.hardwareConcurrency || 4) >> 1),
+				height
+			);
+		} else {
+			workerScript = "/js/arrayWorkers - gpu.js";
+		}
+		console.log(`Using ${numCores} cores with script: ${workerScript}`);
 
-		const workers = [];
-		const results = [];
+		// Pre-allocate final arrays for merging results
+		const finalRgbArray = new Float32Array(width * height);
+		const finalImageDataArray = new Uint8ClampedArray(width * height * 4);
 		let completed = 0;
 
-		const chunkSize = (height + numCores - 1) >> Math.log2(numCores);
-		const transferableObjects = [];
-
-		for (let i = 0; i < numCores; i++) {
-			const worker = new Worker(sizeOfImage > 1200 ? "/js/arrayWorkers - d3.js" : "/js/arrayWorkers.js");
-			console.log(sizeOfImage > 1200 ? "/js/arrayWorkers - d3.js" : "/js/arrayWorkers.js")
-			workers.push(worker);
-
+		if (numCores === 1) {
+			// Single worker case: process the entire array
+			const worker = new Worker(workerScript);
 			worker.onmessage = (e) => {
 				const { rgbArray, imageDataArray } = e.data;
-				results[i] = { rgbArray: new Float32Array(rgbArray), imageDataArray: new Uint8ClampedArray(imageDataArray) };
+				finalRgbArray.set(new Float32Array(rgbArray));
+				finalImageDataArray.set(new Uint8ClampedArray(imageDataArray));
 				worker.terminate();
-
-				if (++completed === numCores) {
-					const finalRgbArray = new Float32Array(width * height);
-					const finalImageDataArray = new Uint8ClampedArray(width * height * 4);
-
-					for (let j = 0; j < numCores; j++) {
-						const offset = j * chunkSize * width * 4;
-						finalRgbArray.set(results[j].rgbArray, j * chunkSize * width);
-						finalImageDataArray.set(results[j].imageDataArray, offset);
-					}
-
-					resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
-				}
+				resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
 			};
-
 			worker.onerror = (err) => {
-				console.error("Worker encountered an error:", err);
 				reject(err);
 				worker.terminate();
 			};
-
-			const startRow = i * chunkSize;
-			const endRow = Math.min(startRow + chunkSize, height);
-			const chunkHeight = endRow - startRow;
-			const chunkImageData = imageData.slice(startRow * width * 4, endRow * width * 4);
-
-			transferableObjects.push(chunkImageData.buffer);
-			let isRadar = (request == "radar");
+			// Copy the data instead of transferring to avoid detaching
+			const imageDataCopy = new Uint8ClampedArray(imageData);
 			worker.postMessage({
-				imageData: chunkImageData,
+				imageData: imageDataCopy,
 				width,
-				height: chunkHeight,
+				height,
 				minValue,
 				maxValue,
-				isInvertedColormap,
+				isInvertedColormap, // Ensure this is defined elsewhere
 				colorTable,
 				isRadar
-			}, [chunkImageData.buffer]);
+			});
+		} else {
+			// Multiple workers: split and process chunks
+			const chunkSize = Math.ceil(height / numCores);
+			const workers = new Array(numCores);
+
+			for (let i = 0; i < numCores; i++) {
+				const worker = new Worker(workerScript);
+				workers[i] = worker;
+
+				const startRow = i * chunkSize;
+				const endRow = Math.min(startRow + chunkSize, height);
+				const chunkHeight = endRow - startRow;
+				const startOffset = startRow * width * 4;
+				const endOffset = endRow * width * 4;
+
+				// Create a copy of the chunk to avoid transferring the original buffer
+				const chunkImageData = new Uint8ClampedArray(imageData.subarray(startOffset, endOffset));
+
+				worker.onmessage = (e) => {
+					const { rgbArray, imageDataArray } = e.data;
+					const chunkOffset = startRow * width;
+
+					// Merge the chunk results into the final arrays
+					finalRgbArray.set(new Float32Array(rgbArray), chunkOffset);
+					finalImageDataArray.set(new Uint8ClampedArray(imageDataArray), startOffset);
+
+					worker.terminate();
+					if (++completed === numCores) {
+						resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
+					}
+				};
+
+				worker.onerror = (err) => {
+					reject(err);
+					worker.terminate();
+				};
+
+				worker.postMessage({
+					imageData: chunkImageData,
+					width,
+					height: chunkHeight,
+					minValue,
+					maxValue,
+					isInvertedColormap, // Ensure this is defined elsewhere
+					colorTable,
+					isRadar
+				});
+			}
 		}
 	});
 }
 
 
-async function convertToCanvasAsync(imgSrc, imgSize) {
+async function convertToCanvasAsync(imgSrc) {
     try {
         //  Create a canvas and get raw RGBA data
         const canvas = document.createElement("canvas");
-        const ctx = canvas.getContext("2d");
-		canvas.width = imgSrc.width;
-		canvas.height = imgSrc.height;
+		const ctx = canvas.getContext("2d");
+		if (request == "model") {
+			canvas.width = imgSrc.width;
+			canvas.height = imgSrc.height;
+		} else if (request == "radar") {
+			canvas.width = canvas.height = 3000;
+		}
+		
 
 		//assert the right scale for the canvas
 		if (newLoad) {
@@ -290,8 +334,7 @@ async function convertToCanvasAsync(imgSrc, imgSize) {
             minValue,
             maxValue,
             variable,
-            colorTable,
-			imgSize
+            colorTable
         );
 
         // Create ImageData and draw it back on the canvas
@@ -351,7 +394,7 @@ async function preloadImagesAsync() {
 
 			// Process the image with convertToCanvasAsync
 			console.time(imgSrc);
-			const { rgbArray, canvas } = await convertToCanvasAsync(img, sizeInKB);
+			const { rgbArray, canvas } = await convertToCanvasAsync(img);
 			console.timeEnd(imgSrc);
 
 			// Ensure new images are inserted at a specific index
@@ -414,7 +457,11 @@ function reloadImages(){
 	fetchFile(`/scripts/getLastRun.php?model=${model}`).then(lastRun => {
 		run1 = params.get('run') || lastRun;
 		document.getElementById("modelIndicator").innerHTML = "Model: " + model;
-		document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML
+		if (request == "radar") {
+			document.getElementById("layerIndicator").innerHTML = variable + " (" + level + ")";
+		} else {
+			document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+		}
 		fetchFile(`/scripts/getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run1}`).then(listOfFiles => {
 			data = JSON.parse(listOfFiles);
 			console.log(JSON.parse(listOfFiles));
