@@ -290,10 +290,31 @@
 	}
 	let zoomMode = "map";
 	<?php require 'scripts/sanitizeFilename.php'; ?>
-	let request = "<?php echo sanitizeFilename($_GET['request'] ?? 'model'); ?>";
+	let request = "<?php $request = sanitizeFilename($_GET['request'] ?? 'model'); echo $request; ?>";
 	let model = "<?php $model = sanitizeFilename($_GET['model'] ?? 'HRRR'); echo $model; ?>";
-	let variable = "<?php $variable =sanitizeFilename($_GET['variable'] ?? 'CAPE'); echo $variable; ?>";
-	let level = "<?php echo sanitizeFilename($_GET['level'] ?? 'lev_surface'); ?>";
+	<?php
+		if ($request === "radar") {
+			$defaultVariable = "reflectivity_horizontal";
+			$defaultLevel = "tilt1";
+		} else {
+			$defaultVariable = "CAPE";
+			$defaultLevel = "lev_surface";
+		}
+
+		// Sanitize user input or use default values
+		$variable = sanitizeFilename($_GET['variable'] ?? $defaultVariable);
+		$level = sanitizeFilename($_GET['level'] ?? $defaultLevel);
+
+		//str_contains for old php
+		if (!function_exists('str_contains')) {
+			function str_contains($haystack, $needle) {
+				return $needle !== '' && mb_strpos($haystack, $needle) !== false;
+			}
+		}
+	?>
+	
+	let variable = "<?php echo $variable; ?>";
+	let level = "<?php echo $level; ?>";
 	let data = <?php require 'scripts/getListOfFiles.php'; ?>;
 	if (request == "model"){
 		var run1 = data["run"]*1000;
@@ -310,8 +331,12 @@
 		if ($variable) {
 			// Sanitize the variable to prevent directory traversal attacks
 			$safeVariable = basename($variable);
-			if (strpos($safeVariable, "reflectivity")){
+			if (str_contains($safeVariable, "reflectivity")){
 				$safeVariable = "REFC";
+			} else if (str_contains($safeVariable, "echo_tops")){
+				$safeVariable = "RETOP";
+			} else if (str_contains($safeVariable, "velocity")){
+				$safeVariable = "velocity";
 			};
 
 			// Construct the file path
@@ -355,7 +380,12 @@
 			document.getElementById("modelIndicator").innerHTML = "Radar: " + model + " (" + getRadarLocationString(model) + ")";
 		}
 
-        document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+		if (request=="radar"){
+			document.getElementById("layerIndicator").innerHTML = variable + " (" + level + ")";
+		} else {
+			document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+		}
+        
 			
     };
 
@@ -376,7 +406,16 @@
 		
 		<?php include("menus/dropdownmenu.html") ?>
 		<div id="parametersMenu">
-			<?php include("menus/{$model}menu.html") ?>
+			<?php 
+				if ($request=="model")
+					include("menus/{$model}menu.html");
+				else if ($request=="radar")
+					if (str_contains($model, "CA")) {
+						include("menus/canadianRadarMenu.html"); 
+					} else {
+						include("menus/radarmenu.html"); 
+					};
+			?>
 		</div>
 		<div class="dropdown-container">
 			<button id="runSelect" class="dropdown-btn" onclick="toggleDropdown('dropdownRun')">Run</button>
