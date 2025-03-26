@@ -369,9 +369,13 @@ async function preloadImagesAsync() {
 		// Ensure the correct scale for the canvas
 		newLoad = true;
 
-		let imageIndex = 0; // Counter to track the index
+		let startIndex = 0;
+		if (request == "radar") {
+			startIndex = Math.max(data["files"].length - radarImagesToSee, 0);
+		}
 
-		for (const [index, file] of data["files"].entries()) {
+		for (const [i, file] of data["files"].slice(startIndex).entries()) {
+			const index = startIndex + i;
 			// If a new load is triggered, stop loading new files
 			if (stopLoadingImages) {
 				stopLoadingImages = false;
@@ -399,9 +403,8 @@ async function preloadImagesAsync() {
 
 			// Ensure new images are inserted at a specific index
 			if (!stopLoadingImages) {
-				canvasList[imageIndex] = canvas;
-				rgbArrayList[imageIndex] = rgbArray;
-				imageIndex++; // Move to the next index
+				canvasList[index] = canvas;
+				rgbArrayList[index] = rgbArray;
 			}
 
 			// Update the main canvas if this is the first image
