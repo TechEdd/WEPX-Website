@@ -1,44 +1,15 @@
-// Web Worker with GPU processing using WebGL 2
-self.onmessage = async function(event) {
-    const { imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable, radar } = event.data;
-    try {
-        const { rgbArray, imageDataArray } = await processWithGPU(
-            imageData, 
-            width, 
-            height, 
-            minValue, 
-            maxValue, 
-            isInvertedColormap, 
-            colorTable, 
-            radar
-        );
-        
-        self.postMessage({
-            rgbArray: rgbArray.buffer,
-            imageDataArray: imageDataArray.buffer
-        }, [rgbArray.buffer, imageDataArray.buffer]);
-    } catch (error) {
-        console.warn('GPU processing failed, falling back to CPU:', error);
-        const result = processWithCPU(imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable, radar);
-        
-        self.postMessage({
-            rgbArray: result.rgbArray.buffer,
-            imageDataArray: result.imageDataArray.buffer
-        }, [result.rgbArray.buffer, result.imageDataArray.buffer]);
-    }
-};
+// Persistent WebGL resources
+let gl, program, vao, positionBuffer, texture, colorTexture, fb, colorTextureOut, valueTextureOut, canvas;
 
-// GPU processing function using WebGL 2
-async function processWithGPU(imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable, radar) {
-    const canvas = new OffscreenCanvas(width, height);
-    const gl = canvas.getContext('webgl2');
-    
+// Initialize WebGL context and resources once
+function initializeWebGL() {
+    canvas = new OffscreenCanvas(1, 1); // Initial size
+    gl = canvas.getContext('webgl2');
     if (!gl) throw new Error('WebGL 2 not supported');
 
     const ext = gl.getExtension('EXT_color_buffer_float');
     if (!ext) throw new Error('Floating-point render targets not supported');
 
-    // Vertex shader
     const vertexShaderSource = `#version 300 es
         in vec2 a_position;
         in float a_vertexId;
@@ -51,7 +22,6 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
         }
     `;
 
-    // Fragment shader
     const fragmentShaderSource = `#version 300 es
         precision highp float;
         in vec2 v_texCoord;
@@ -81,8 +51,8 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
                 vec2(0.0, 1.0),
                 vec2(1.0, 1.0)
             );
-            int batchIdx = int(mod(v_vertexId, 4.0));
-            vec2 baseCoord = v_texCoord + (u_texelSize * 0.5); // Center the sample
+            int batchIdx = int(mod(v_vertexId, 4.0)); // Fixed typo: 'flor' -> '4.0'
+            vec2 baseCoord = v_texCoord + (u_texelSize * 0.5);
             vec2 coord = baseCoord + (offsets[batchIdx] * u_texelSize);
 
             vec4 pixel = texture(u_image, coord);
@@ -96,25 +66,23 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
         }
     `;
 
-    // Create and compile shaders
     const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
     if (!vertexShader || !fragmentShader) throw new Error('Shader compilation failed');
 
-    const program = createProgram(gl, vertexShader, fragmentShader);
+    program = createProgram(gl, vertexShader, fragmentShader);
     if (!program) throw new Error('Program creation failed');
     gl.useProgram(program);
 
-    // Set up vertex buffer
-    const positionBuffer = gl.createBuffer();
+    positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     const positions = new Float32Array([
-        -1, -1, 0,  1, -1, 1,  -1, 1, 2,
-         1, -1, 3,  1,  1, 4,  -1, 1, 5
+        -1, -1, 0, 1, -1, 1, -1, 1, 2,
+        1, -1, 3, 1, 1, 4, -1, 1, 5
     ]);
     gl.bufferData(gl.ARRAY_BUFFER, positions, gl.STATIC_DRAW);
 
-    const vao = gl.createVertexArray();
+    vao = gl.createVertexArray();
     gl.bindVertexArray(vao);
     const positionLocation = gl.getAttribLocation(program, 'a_position');
     const vertexIdLocation = gl.getAttribLocation(program, 'a_vertexId');
@@ -123,18 +91,77 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
     gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 12, 0);
     gl.vertexAttribPointer(vertexIdLocation, 1, gl.FLOAT, false, 12, 8);
 
-    // Input image texture
-    const texture = gl.createTexture();
+    texture = gl.createTexture();
+    colorTexture = gl.createTexture();
+    fb = gl.createFramebuffer();
+    colorTextureOut = gl.createTexture();
+    valueTextureOut = gl.createTexture();
+
+    return canvas;
+}
+
+// Main worker message handler
+self.onmessage = async function (event) {
+    const { imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable, radar } = event.data;
+
+    try {
+        if (!gl) {
+            initializeWebGL();
+        }
+
+        if (!canvas) {
+            throw new Error('Canvas is undefined after initialization');
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const { rgbArray, imageDataArray } = await processWithGPU(
+            imageData,
+            width,
+            height,
+            minValue,
+            maxValue,
+            isInvertedColormap,
+            colorTable,
+            radar
+        );
+
+        self.postMessage({
+            rgbArray: rgbArray,
+            imageDataArray: imageDataArray
+        }, [rgbArray.buffer, imageDataArray.buffer]);
+    } catch (error) {
+        console.error('Error in worker:', error);
+        const { rgbArray, imageDataArray } = processWithCPU(
+            imageData,
+            width,
+            height,
+            minValue,
+            maxValue,
+            isInvertedColormap,
+            colorTable,
+            radar
+        );
+
+        self.postMessage({
+            rgbArray: rgbArray,
+            imageDataArray: imageDataArray
+        }, [rgbArray.buffer, imageDataArray.buffer]);
+    }
+};
+
+async function processWithGPU(imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable, radar) {
+
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(imageData));
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageData);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    // Color table texture
-    const colorTableSize = 256; // Fixed size for consistency
+    const colorTableSize = 256;
     const colorTableData = new Uint8Array(colorTableSize * 4);
     for (let i = 0; i < colorTableSize; i++) {
         const t = i / (colorTableSize - 1);
@@ -146,7 +173,6 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
         colorTableData[idx + 2] = b;
         colorTableData[idx + 3] = a ?? 255;
     }
-    const colorTexture = gl.createTexture();
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, colorTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, colorTableSize, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, colorTableData);
@@ -155,36 +181,30 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-    // Framebuffer setup
-    const fb = gl.createFramebuffer();
-    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
-
-    const colorTextureOut = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, colorTextureOut);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTextureOut, 0);
     gl.bindTexture(gl.TEXTURE_2D, null);
 
-    const valueTextureOut = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, valueTextureOut);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.R32F, width, height, 0, gl.RED, gl.FLOAT, null);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, valueTextureOut, 0);
     gl.bindTexture(gl.TEXTURE_2D, null);
 
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTextureOut, 0);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT1, gl.TEXTURE_2D, valueTextureOut, 0);
     gl.drawBuffers([gl.COLOR_ATTACHMENT0, gl.COLOR_ATTACHMENT1]);
 
-    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
-    if (status !== gl.FRAMEBUFFER_COMPLETE) {
-        console.error('Framebuffer incomplete: ', status);
-        throw new Error('Framebuffer setup failed');
+    const fbStatus = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (fbStatus !== gl.FRAMEBUFFER_COMPLETE) {
+        throw new Error(`Framebuffer incomplete: ${fbStatus}`);
     }
 
     gl.activeTexture(gl.TEXTURE0);
@@ -192,7 +212,6 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
     gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, colorTexture);
 
-    // Set uniforms
     const valueScale = (maxValue - minValue) / 16777215.0;
     gl.uniform1i(gl.getUniformLocation(program, 'u_image'), 0);
     gl.uniform1i(gl.getUniformLocation(program, 'u_colorTable'), 1);
@@ -204,21 +223,29 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
     gl.uniform1f(gl.getUniformLocation(program, 'u_colorTableSize'), colorTableSize);
     gl.uniform2f(gl.getUniformLocation(program, 'u_texelSize'), 1.0 / width, 1.0 / height);
 
-    // Render
     gl.viewport(0, 0, width, height);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
-    // Read results
+    const error = gl.getError();
+    if (error !== gl.NO_ERROR) {
+        throw new Error(`WebGL error after drawArrays: ${error}`);
+    }
+
     const imageDataArray = new Uint8ClampedArray(width * height * 4);
     const rgbArray = new Float32Array(width * height);
 
     gl.readBuffer(gl.COLOR_ATTACHMENT0);
     gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, imageDataArray);
+    if (gl.getError() !== gl.NO_ERROR) {
+        throw new Error('WebGL error during readPixels (COLOR_ATTACHMENT0)');
+    }
 
     gl.readBuffer(gl.COLOR_ATTACHMENT1);
     gl.readPixels(0, 0, width, height, gl.RED, gl.FLOAT, rgbArray);
+    if (gl.getError() !== gl.NO_ERROR) {
+        throw new Error('WebGL error during readPixels (COLOR_ATTACHMENT1)');
+    }
 
-    // Replace 0.0 with NaN where appropriate
     for (let i = 0; i < width * height; i++) {
         if (rgbArray[i] === 0.0 && imageDataArray[i * 4] === 0) {
             rgbArray[i] = NaN;
@@ -228,7 +255,7 @@ async function processWithGPU(imageData, width, height, minValue, maxValue, isIn
     return { rgbArray, imageDataArray };
 }
 
-// CPU fallback function (unchanged)
+// CPU fallback and helper functions (unchanged)
 function processWithCPU(imageData, width, height, minValue, maxValue, isInvertedColormap, colorTable, radar) {
     const imageSize = width * height;
     const imageDataArray = new Uint8ClampedArray(imageSize * 4);
@@ -281,7 +308,6 @@ function processWithCPU(imageData, width, height, minValue, maxValue, isInverted
     return { rgbArray, imageDataArray };
 }
 
-// Helper functions
 function createShader(gl, type, source) {
     const shader = gl.createShader(type);
     gl.shaderSource(shader, source);

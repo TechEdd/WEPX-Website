@@ -13,7 +13,7 @@ let ajustColormap = false;
 var rgbArrayList = [];
 var canvasList = [];
 
-if (ajustColormap){
+if (ajustColormap) {
 	//colorTable = rescaleColorTable(minValue, maxValue, colorTable);
 	colorTable = rescaleColorTable(180, 250, colorTable);
 }
@@ -54,7 +54,7 @@ function getRadarBBOX(radarInfo) {
 	];
 }
 
-function renderPPI(ctx, imageData, width, height, shouldLiveUpdate, isPlateCarree = false, radarInfo=null) {
+function renderPPI(ctx, imageData, width, height, shouldLiveUpdate, isPlateCarree = false, radarInfo = null) {
 	const data = imageData.data;
 	const N = height;  // Number of azimuths (scan lines)
 	const M = width;   // Number of range bins (radial resolution)
@@ -194,121 +194,154 @@ async function drawColormap(colorTable) {
 }
 drawColormap(colorTable);
 
+// Global worker pool (initialized once)
+const workerPool = {};
+function initializeWorkerPool(script, numWorkers) {
+	if (!workerPool[script]) {
+		workerPool[script] = Array(numWorkers).fill().map(() => ({
+			worker: new Worker(script),
+			busy: false
+		}));
+	}
+	return workerPool[script];
+}
+
+// Check WebGL support once at startup (global scope)
+const hasWebGL = !!window.WebGLRenderingContext &&
+	!!document.createElement('canvas').getContext('webgl');
+
+// Main function with optimizations
 async function mapColorsWithWorker(imageData, width, height, minValue, maxValue, variable, colorTable) {
 	return new Promise((resolve, reject) => {
-		// Check WebGL support first to determine number of cores
-		const hasWebGL = !!window.WebGLRenderingContext &&
-			!!document.createElement('canvas').getContext('webgl');
-		const isRadar = variable == "radar";
-		let workerScript;
-		var numCores = 1;
-		if (isRadar) {
-			workerScript = "/js/arrayWorkers.js";
-			numCores = Math.min(
-				Math.max(1, (navigator.hardwareConcurrency || 4) >> 1),
-				height
-			);
-		} else {
-			workerScript = "/js/arrayWorkers - gpu.js";
-		}
+		const isRadar = variable === "radar";
+		const workerScript = isRadar ? "/js/arrayWorkers.js" : "/js/arrayWorkers - gpu.js";
+
+		// Determine number of cores dynamically
+		const numCores = isRadar
+			? Math.min(Math.max(1, (navigator.hardwareConcurrency || 4) >> 1), height)
+			: 1;
+
 		console.log(`Using ${numCores} cores with script: ${workerScript}`);
 
-		// Pre-allocate final arrays for merging results
+		// Pre-allocate final arrays
 		const finalRgbArray = new Float32Array(width * height);
 		const finalImageDataArray = new Uint8ClampedArray(width * height * 4);
 		let completed = 0;
 
+		// Initialize or reuse worker pool
+		const workers = initializeWorkerPool(workerScript, numCores);
+
 		if (numCores === 1) {
-			// Single worker case: process the entire array
-			const worker = new Worker(workerScript);
+			// Single worker case
+			const workerObj = workers[0];
+			const worker = workerObj.worker;
+			workerObj.busy = true;
+
 			worker.onmessage = (e) => {
 				const { rgbArray, imageDataArray } = e.data;
 				finalRgbArray.set(new Float32Array(rgbArray));
 				finalImageDataArray.set(new Uint8ClampedArray(imageDataArray));
-				worker.terminate();
+				workerObj.busy = false;
 				resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
 			};
+
 			worker.onerror = (err) => {
+				workerObj.busy = false;
 				reject(err);
-				worker.terminate();
 			};
-			// Copy the data instead of transferring to avoid detaching
-			const imageDataCopy = new Uint8ClampedArray(imageData);
+
+			// Use transferable objects instead of copying
+			const imageDataBuffer = imageData.buffer;
 			worker.postMessage({
-				imageData: imageDataCopy,
+				imageData: imageData,
 				width,
 				height,
 				minValue,
 				maxValue,
-				isInvertedColormap, // Ensure this is defined elsewhere
+				isInvertedColormap, // Assumed to be defined elsewhere
 				colorTable,
 				isRadar
-			});
+			}, [imageDataBuffer]); // Transfer ownership of the buffer
 		} else {
-			// Multiple workers: split and process chunks
+			// Multiple workers: split into chunks
 			const chunkSize = Math.ceil(height / numCores);
-			const workers = new Array(numCores);
+			const tasks = [];
 
 			for (let i = 0; i < numCores; i++) {
-				const worker = new Worker(workerScript);
-				workers[i] = worker;
-
 				const startRow = i * chunkSize;
 				const endRow = Math.min(startRow + chunkSize, height);
+				if (startRow >= endRow) break; // Skip empty chunks
+
 				const chunkHeight = endRow - startRow;
 				const startOffset = startRow * width * 4;
 				const endOffset = endRow * width * 4;
 
-				// Create a copy of the chunk to avoid transferring the original buffer
-				const chunkImageData = new Uint8ClampedArray(imageData.subarray(startOffset, endOffset));
+				// Slice the buffer and transfer it
+				const chunkImageData = imageData.subarray(startOffset, endOffset);
+				const chunkBuffer = chunkImageData.buffer.slice(startOffset, endOffset); // Create a transferable copy
+				const transferableChunk = new Uint8ClampedArray(chunkBuffer);
 
-				worker.onmessage = (e) => {
-					const { rgbArray, imageDataArray } = e.data;
-					const chunkOffset = startRow * width;
+				// Find an available worker
+				const workerObj = workers.find(w => !w.busy);
+				if (!workerObj) {
+					reject(new Error("No available workers"));
+					return;
+				}
+				const worker = workerObj.worker;
+				workerObj.busy = true;
 
-					// Merge the chunk results into the final arrays
-					finalRgbArray.set(new Float32Array(rgbArray), chunkOffset);
-					finalImageDataArray.set(new Uint8ClampedArray(imageDataArray), startOffset);
+				tasks.push(new Promise((res, rej) => {
+					worker.onmessage = (e) => {
+						const { rgbArray, imageDataArray } = e.data;
+						const chunkOffset = startRow * width;
 
-					worker.terminate();
-					if (++completed === numCores) {
-						resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
-					}
-				};
+						finalRgbArray.set(new Float32Array(rgbArray), chunkOffset);
+						finalImageDataArray.set(new Uint8ClampedArray(imageDataArray), startOffset);
 
-				worker.onerror = (err) => {
-					reject(err);
-					worker.terminate();
-				};
+						workerObj.busy = false;
+						completed++;
+						if (completed === tasks.length) {
+							resolve({ rgbArray: finalRgbArray, imageDataArray: finalImageDataArray });
+						}
+						res();
+					};
 
-				worker.postMessage({
-					imageData: chunkImageData,
-					width,
-					height: chunkHeight,
-					minValue,
-					maxValue,
-					isInvertedColormap, // Ensure this is defined elsewhere
-					colorTable,
-					isRadar
-				});
+					worker.onerror = (err) => {
+						workerObj.busy = false;
+						rej(err);
+					};
+
+					worker.postMessage({
+						imageData: transferableChunk,
+						width,
+						height: chunkHeight,
+						minValue,
+						maxValue,
+						isInvertedColormap, // Assumed to be defined elsewhere
+						colorTable,
+						isRadar
+					}, [transferableChunk.buffer]);
+				}));
 			}
+
+			Promise.all(tasks).catch(reject);
 		}
 	});
 }
 
 
 async function convertToCanvasAsync(imgSrc) {
-    try {
-        //  Create a canvas and get raw RGBA data
-        const canvas = document.createElement("canvas");
-		const ctx = canvas.getContext("2d");
+	try {
+		//  Create a canvas and get raw RGBA data
+		const canvas = new OffscreenCanvas(imgSrc.width, imgSrc.height);
+		const ctx = canvas.getContext('2d');
 		if (request == "model") {
 			canvas.width = imgSrc.width;
 			canvas.height = imgSrc.height;
 		} else if (request == "radar") {
 			canvas.width = canvas.height = 3000;
 		}
-		
+
 
 		//assert the right scale for the canvas
 		if (newLoad) {
@@ -323,23 +356,23 @@ async function convertToCanvasAsync(imgSrc) {
 		}
 
 		ctx.drawImage(imgSrc, 0, 0);
-		
+
 		const imageData = ctx.getImageData(0, 0, imgSrc.width, imgSrc.height);
 		temp1 = imageData;
-        // Use the worker to process the RGBA data and apply the color mapping
-        const { rgbArray, imageDataArray } = await mapColorsWithWorker(
-            imageData.data, // Raw image data
+		// Use the worker to process the RGBA data and apply the color mapping
+		const { rgbArray, imageDataArray } = await mapColorsWithWorker(
+			imageData.data, // Raw image data
 			imgSrc.width,
 			imgSrc.height,
-            minValue,
-            maxValue,
-            variable,
-            colorTable
-        );
+			minValue,
+			maxValue,
+			variable,
+			colorTable
+		);
 
-        // Create ImageData and draw it back on the canvas
-        const processedImageData = new ImageData(
-            new Uint8ClampedArray(imageDataArray),
+		// Create ImageData and draw it back on the canvas
+		const processedImageData = new ImageData(
+			new Uint8ClampedArray(imageDataArray),
 			imgSrc.width, imgSrc.height
 		);
 		if (request == "model") {
@@ -350,11 +383,11 @@ async function convertToCanvasAsync(imgSrc) {
 			forecastbbox = getRadarBBOX(radarInfo);
 		}
 
-		return {rgbArray, canvas};
-    } catch (error) {
-        console.error("Error in convertToCanvasAsync:", error);
-        throw error;
-    }
+		return { rgbArray, canvas };
+	} catch (error) {
+		console.error("Error in convertToCanvasAsync:", error);
+		throw error;
+	}
 }
 
 //squential preload
@@ -389,7 +422,7 @@ async function preloadImagesAsync() {
 			} else if (request == "radar") {
 				imgSrc = "/downloads/radars/" + model + "/" + file["file"];
 			}
-			
+
 			if (zoomMode == "zoomed") {
 				imgSrc = `/scripts/crop.php?xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&file=${imgSrc}`;
 			}
@@ -428,25 +461,25 @@ async function preloadImagesAsync() {
 
 //helper function to preload image
 async function loadImage(src) {
-    return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-        // Creating a new request to get the image file size
-        fetch(src, { method: 'HEAD' })
-            .then(response => {
-                const sizeInBytes = response.headers.get('Content-Length');
-                const sizeInKB = sizeInBytes ? (parseInt(sizeInBytes) / 1024).toFixed(2) : 0;
-                resolve({ img, sizeInKB });
-            })
-            .catch(err => reject(`Failed to fetch file size for ${src}: ${err}`));
-    };
-    img.onerror = (err) => reject(`Failed to load image at ${src}: ${err}`);
-    img.src = src;
-});
+	return new Promise((resolve, reject) => {
+		const img = new Image();
+		img.onload = () => {
+			// Creating a new request to get the image file size
+			fetch(src, { method: 'HEAD' })
+				.then(response => {
+					const sizeInBytes = response.headers.get('Content-Length');
+					const sizeInKB = sizeInBytes ? (parseInt(sizeInBytes) / 1024).toFixed(2) : 0;
+					resolve({ img, sizeInKB });
+				})
+				.catch(err => reject(`Failed to fetch file size for ${src}: ${err}`));
+		};
+		img.onerror = (err) => reject(`Failed to load image at ${src}: ${err}`);
+		img.src = src;
+	});
 
 }
 
-function reloadImages(){
+function reloadImages() {
 	//clearing all images array
 	rgbArray = null;
 	canvasList = [];
@@ -488,29 +521,29 @@ function reloadImages(){
 
 		});
 	});
-	
+
 }
 
 function fetchFile(url) {
-    return fetch(url)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error, status: ${response.status}`);
-            }
+	return fetch(url)
+		.then(response => {
+			if (!response.ok) {
+				throw new Error(`HTTP error, status: ${response.status}`);
+			}
 			return response.text();
-        })
-        .catch(error => {
-            console.error('Error loading PHP file:', error);
-            throw error; // Rethrow error to handle it further up
-        });
+		})
+		.catch(error => {
+			console.error('Error loading PHP file:', error);
+			throw error; // Rethrow error to handle it further up
+		});
 }
 
-function darkMode(dark){
-	if (dark){
+function darkMode(dark) {
+	if (dark) {
 		container.style.backgroundColor = "#101010";
 		map.style.filter = "invert(1)";
 		if (document.querySelector(".image").style.border != undefined) {
-			document.querySelector(".image").style.border ="border: 2px solid white"
+			document.querySelector(".image").style.border = "border: 2px solid white"
 		}
 	}
 	else {
