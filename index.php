@@ -316,11 +316,13 @@
 	let variable = "<?php echo $variable; ?>";
 	let level = "<?php echo $level; ?>";
 	let data = <?php require 'scripts/getListOfFiles.php'; ?>;
+	<?php if ($request=="radar") {echo "let radarTilts = "; require('radarsTilts.json'); echo ";";} ?>
 	if (request == "model"){
 		var run1 = data["run"]*1000;
 		var runNb = new Date(parseInt(run1)).getUTCHours();
 	}
 	if (request == "radar"){
+		var isRadar = true;
 		radarInfo = <?php echo json_encode(json_decode(file_get_contents('radar_latlon.json'), true)[$model] ?? 'radar not in json'); ?>;
 	}
 	var minValue = data["vmin"];
@@ -328,6 +330,7 @@
 	//let isInvertedColormap = (variable === "CIN" || variable === "SBT124" || minValue>maxValue);
 	let isInvertedColormap = false;
 	let colorTable = <?php
+
 		if ($variable) {
 			// Sanitize the variable to prevent directory traversal attacks
 			$safeVariable = basename($variable);
@@ -381,7 +384,7 @@
 		}
 
 		if (request=="radar"){
-			document.getElementById("layerIndicator").innerHTML = variable + " (" + level + ")";
+			document.getElementById("layerIndicator").innerHTML = variable + " (" + data["files"][slider.value]["tilt"] + "°)";
 		} else {
 			document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
 		}
@@ -473,4 +476,3 @@
 <script src="js/imageContainer.js"></script>
 <script src="js/canvasGenerator.js"></script>
 <script src="js/menuGenerator.js"></script>
-<script src="js/eventWatcher.js"></script>
