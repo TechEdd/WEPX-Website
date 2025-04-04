@@ -1,16 +1,6 @@
 var unavailablePercent;
 var colormapDiv = document.getElementById("colormapDiv")
 // dropdownmenu
-// Function to toggle dropdown visibility
-function toggleDropdown(id) {
-    var element = document.getElementById(id);
-    element.classList.toggle('open');
-    if (element.style.display === "block") {
-        element.style.display = "none";
-    } else {
-        element.style.display = "block";
-    }
-}
 
 // Function to toggle dropdown visibility
 function toggleDropdown(id) {
@@ -20,6 +10,7 @@ function toggleDropdown(id) {
         element.style.display = "none";
     } else {
         element.style.display = "block";
+        if (id == "dropdownRun") { prepareRadarMenu() };
     }
 }
 
@@ -180,6 +171,32 @@ slider.addEventListener('input', () => {
 });
 updateSliderUI();
 
+
+
+function prepareRadarMenu() {
+    document.getElementById("dropdownRun").innerHTML = "...";
+    if (radarTilts["full_tilt_variables"].includes(variable)) {
+        fetchFile(`/scripts/getNbTilts.php?radar_id=${model}&variable=${variable}&start=${radarImagesToSee}`).then(nbTilts => {
+            document.getElementById("dropdownRun").innerHTML = "";
+            for (let tilt = 1; tilt <= parseInt(nbTilts); tilt++) {
+                document.getElementById('dropdownRun').innerHTML += `<a href="javascript:(function(){updateUrlVariable('level', 'tilt${tilt}');reloadImagesPrepare()})()">Tilt ${tilt}</a>`;
+            }
+        })
+    } else if (variable == "echo_tops") {
+        document.getElementById('dropdownRun').innerHTML = "";
+    } else {
+        document.getElementById("dropdownRun").innerHTML = "";
+        for (let tilt = 1; tilt <= radarTilts["limited_Tilts"]; tilt++) {
+            document.getElementById('dropdownRun').innerHTML += `<a href="javascript:(function(){updateUrlVariable('level', 'tilt${tilt}');reloadImagesPrepare()})()">Tilt ${tilt}</a>`;
+        }
+    }
+
+
+}
+if (isRadar) {
+    document.getElementById("runSelect").innerHTML = "Tilts";
+}
+
 function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
     const url = new URL(window.location.href);
     const params = url.searchParams;
@@ -188,6 +205,10 @@ function updateUrlVariable(variableName, variableValue, levelName, levelValue) {
     params.set(variableName, variableValue);
     if (levelName != undefined) {
         params.set(levelName, levelValue);
+    }
+
+    if (variableName == "variable") {
+        variable = variableName;
     }
 
     // Update the browser's history without refreshing the page
@@ -207,14 +228,19 @@ function reloadImagesPrepare() {
     if (!allImagesLoaded) {
         stopLoadingImages = true;
     }
-    document.getElementById("runSelect").innerHTML = "Run: " + new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
-    availableSlider.style.opacity = 1;
-    fetchFile(`/scripts/getRuns.php?model=${model}&run=${run1 / 1000}`).then(listOfRuns => {
-        document.getElementById('dropdownRun').innerHTML = listOfRuns;
-    })
-    fetchFile(`/menus/${model}menu.html`).then(paramMenu => {
-        document.getElementById("parametersMenu").innerHTML = paramMenu;
-    })
+    if (isRadar) {
+        prepareRadarMenu();
+    } else {
+        document.getElementById("runSelect").innerHTML = "Run: " + new Date(parseInt(run1)).toISOString().replace('T', ' ').slice(0, 16) + 'z';
+        vailableSlider.style.opacity = 1;
+        fetchFile(`/scripts/getRuns.php?model=${model}&run=${run1 / 1000}`).then(listOfRuns => {
+            document.getElementById('dropdownRun').innerHTML = listOfRuns;
+        })
+        fetchFile(`/menus/${model}menu.html`).then(paramMenu => {
+            document.getElementById("parametersMenu").innerHTML = paramMenu;
+        })
+    }
+  
     reloadImages();
 
 
