@@ -5,6 +5,8 @@ const canvas = document.getElementById('canvas');
 const forecastTimeText = document.getElementById("forecastTime");
 const map = document.getElementById("map");
 let radarImagesToSee = 10;
+let radarHeight;
+let radarWidth;
 let hrMapLoaded = false;
 let animationFrameId;
 let isDragging = false;
@@ -74,6 +76,17 @@ function getForecastBbox(model) {
 
 	return forecastbbox[model] || null; // Returns the bounding box or null if model not found
 }
+
+function radarBeamHeight(elevationAngle, distance, radar_height = 0) {
+    const EFFECTIVE_RADIUS = 6371e3*4/3; // Earth radius * 4/3 in meters
+    const DEG_TO_RAD = Math.PI/180;      // Math.PI / 180
+    
+    return (
+        radar_height + 
+        (distance * Math.sin(elevationAngle * DEG_TO_RAD)) + 
+        (distance * distance / (2 * EFFECTIVE_RADIUS))
+    ) - (EFFECTIVE_RADIUS * (1 - Math.cos(distance / EFFECTIVE_RADIUS)));
+}
 // Prevent default drag and context menu on the container
 container.addEventListener('mousedown', (e) => {
     if (isControlPressed) {
@@ -131,8 +144,62 @@ container.addEventListener('mousemove', (e) => {
 	
 	cursorX = e.clientX;
 	cursorY = e.clientY;
+	
+	if (isRadar) {
+		//get pixel index
+		const rect = canvas.getBoundingClientRect();
+		let x = cursorX - rect.left; // X position relative to the canvas
+		let y = cursorY - rect.top;  // Y position relative to the canvas
+		const zoomingFactorX = canvas.width / rect.width;
+		const zoomingFactorY = canvas.height / rect.height;
 
-	tooltip.textContent = getPixelValue();
+		//get value of array
+		mouseX = parseInt(x * zoomingFactorX);
+		mouseY = parseInt(y * zoomingFactorY);
+		const N_used = radarHeight; // Azimuths
+            const M_used = radarWidth;  // Range bins
+
+            const radarIndex = getPPIPixelIndex(
+                mouseX, mouseY,
+                canvas.width, canvas.height,
+                M_used, // Pass M (width) used in render
+                N_used, // Pass N (height) used in render
+                USE_PLATE_CARREE, // MUST match the mode used for renderPPI
+                USE_PLATE_CARREE ? radarInfo : null // Pass info only if needed
+            );
+
+            if (radarIndex !== null) {
+                // Calculate i (azimuth) and j (range bin) from the flat index
+                const i = Math.floor(radarIndex / M_used); // Use M_used (width)
+                const j = radarIndex % M_used;             // Use M_used (width)
+
+                // Access the original pixel data for display (optional)
+                const val = rgbArrayList[slider.value][radarIndex];
+
+                // Calculate approximate distance/bearing if needed (standard PPI only here for simplicity)
+                let displayInfo = `${val.toFixed(2)}`;
+                 if (!USE_PLATE_CARREE && radarInfo && radarInfo.range) {
+                    const radius = Math.sqrt(Math.pow(mouseX - canvas.width/2, 2) + Math.pow(mouseY - canvas.height/2, 2));
+                    const maxCanvasRadius = Math.min(canvas.width/2, canvas.height/2);
+                    const distanceKm = (radius / maxCanvasRadius) * (radarInfo.range / 1000);
+					//change to radarInfo tilt
+					 const hmh = radarBeamHeight(data["files"][slider.value]["tilt"], distanceKm*1000, 0)
+
+                    displayInfo += ` | Distance from radar: ${distanceKm.toFixed(1)}km | HMH: ${hmh.toFixed(1)}m`;
+                 } else if (USE_PLATE_CARREE && radarInfo && radarInfo.range) {
+                     // Could add lat/lon display here by reversing the getPPIPixelIndex calculation partially
+                 }
+
+
+                tooltip.textContent = displayInfo;
+
+            } else {
+                tooltip.textContent = "";
+            }
+	}
+	else {
+		tooltip.textContent = getPixelValue();
+	}
 	tooltip.style.left = `${e.pageX - tooltip.offsetWidth / 2}px`; // Center horizontally
 	tooltip.style.top = `${e.pageY - 40}px`; // Center vertically
 	tooltip.style.display = 'block';             // Make the tooltip visible
