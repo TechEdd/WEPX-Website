@@ -4,6 +4,7 @@ var newLoad = true;
 var stopLoadingImages = false;
 let temp;
 let allImagesLoaded = false;
+const USE_PLATE_CARREE = false;
 
 const max24BitValue = 256 ** 3;
 // Color table as an array of tuples (value, r, g, b)
@@ -54,112 +55,407 @@ function getRadarBBOX(radarInfo) {
 	];
 }
 
-function renderPPI(ctx, imageData, width, height, shouldLiveUpdate, isPlateCarree = false, radarInfo = null) {
-	const data = imageData.data;
-	const N = height;  // Number of azimuths (scan lines)
-	const M = width;   // Number of range bins (radial resolution)
-	const R = Math.min(ctx.canvas.width, ctx.canvas.height) / 2;
-	const cx = R, cy = R; // Center of canvas
+const EARTH_RADIUS_METERS = 6371000;
 
-	// Radar info for Plate Carrée
-	const radarLat = radarInfo.lat;    // Radar latitude in degrees
-	const radarLon = radarInfo.lon;    // Radar longitude in degrees
-	const maxRange = parseFloat(radarInfo.range); // Maximum range in meters
-	const earthRadius = 6371000; // Earth's radius in meters
-
-	ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
-	// Apply 90° rotation only for polar rendering
-	if (!isPlateCarree) {
-		ctx.save();
-		ctx.translate(0, ctx.canvas.height);
-		ctx.rotate(-Math.PI / 2);
-	} else {
-		ctx.save(); // Still save context for restoration
-	}
-
-	let i = 0; // Track the current azimuth
-	const batchSize = Math.max(1, Math.floor(N / 120)); // Render ~60 frames
-
-	function drawAzimuth(i) {
-		let theta = (i / N) * 2 * Math.PI; // Azimuth angle in radians
-
-		for (let j = 0; j < M; j++) {
-			let srcIdx = (i * M + j) * 4;
-			if (data[srcIdx + 3] === 0) continue; // Skip fully transparent pixels
-
-			let x, y, rotateAngle;
-			let pixelSize = Math.max(1.5, (0.3 + 0.7 * Math.pow(j / M, 0.7)) * (R / M) * 4);
-			let alpha = data[srcIdx + 3] / 255;
-
-			if (isPlateCarree) {
-				// Plate Carrée projection
-				let range = (j / M) * maxRange;
-				let latRad = radarLat * Math.PI / 180;
-				let lonRad = radarLon * Math.PI / 180;
-				let angularDistance = range / earthRadius;
-				let azimuthRad = theta;
-
-				let newLatRad = Math.asin(
-					Math.sin(latRad) * Math.cos(angularDistance) +
-					Math.cos(latRad) * Math.sin(angularDistance) * Math.cos(azimuthRad)
-				);
-				let newLonRad = lonRad + Math.atan2(
-					Math.sin(azimuthRad) * Math.sin(angularDistance) * Math.cos(latRad),
-					Math.cos(angularDistance) - Math.sin(latRad) * Math.sin(newLatRad)
-				);
-
-				let newLat = newLatRad * 180 / Math.PI;
-				let newLon = newLonRad * 180 / Math.PI;
-
-				// Adjust scaling for proper compression
-				let latRange = (maxRange / earthRadius) * (180 / Math.PI); // Latitude range in degrees
-				let lonRange = latRange / Math.cos(latRad); // Longitude range adjusted for latitude
-
-				// Map to canvas, compress y-axis relative to x-axis
-				x = cx + ((newLon - radarLon) / lonRange) * R;
-				y = cy - ((newLat - radarLat) / latRange) * R * Math.cos(latRad); // Compress y by cos(latitude)
-				rotateAngle = 0; // No rotation in Plate Carrée
-			} else {
-				// Original polar rendering
-				let r = (j / M) * R;
-				x = cx + r * Math.cos(theta);
-				y = cy + r * Math.sin(theta);
-				rotateAngle = theta; // Rotate according to azimuth
-			}
-
-			ctx.save();
-			ctx.translate(x, y);
-			ctx.rotate(rotateAngle);
-			ctx.fillStyle = `rgba(${data[srcIdx]}, ${data[srcIdx + 1]}, ${data[srcIdx + 2]}, ${alpha})`;
-			ctx.fillRect(-pixelSize / 2, -pixelSize / 2, pixelSize, pixelSize * 1.5);
-			ctx.restore();
-		}
-	}
-
-	function drawNextBatch() {
-		let maxI = Math.min(i + batchSize, N);
-
-		for (; i < maxI; i++) {
-			drawAzimuth(i);
-		}
-
-		if (shouldLiveUpdate && i < N) {
-			requestAnimationFrame(drawNextBatch);
-		} else if (!shouldLiveUpdate && i >= N) {
-			ctx.restore();
-		}
-	}
-
-	if (shouldLiveUpdate) {
-		drawNextBatch();
-	} else {
-		for (i = 0; i < N; i++) {
-			drawAzimuth(i);
-		}
-		ctx.restore();
-	}
+function toRadians(degrees) {
+    return degrees * Math.PI / 180;
 }
+
+function toDegrees(radians) {
+    return radians * 180 / Math.PI;
+}
+
+function destinationPoint(lat1, lon1, bearing, distance) {
+    const lat1Rad = toRadians(lat1);
+    const lon1Rad = toRadians(lon1);
+    const bearingRad = toRadians(bearing);
+    const angularDistance = distance / EARTH_RADIUS_METERS;
+
+    const lat2Rad = Math.asin(Math.sin(lat1Rad) * Math.cos(angularDistance) +
+                           Math.cos(lat1Rad) * Math.sin(angularDistance) * Math.cos(bearingRad));
+
+    const lon2Rad = lon1Rad + Math.atan2(Math.sin(bearingRad) * Math.sin(angularDistance) * Math.cos(lat1Rad),
+                                      Math.cos(angularDistance) - Math.sin(lat1Rad) * Math.sin(lat2Rad));
+
+    const lon2Deg = (toDegrees(lon2Rad) + 540) % 360 - 180;
+
+    return {
+        lat: toDegrees(lat2Rad),
+        lon: lon2Deg
+    };
+}
+
+function calculateGeoBounds(radarLat, radarLon, maxRange, margin = 0.1) {
+     if (maxRange <= 0) {
+        return { minLat: radarLat, maxLat: radarLat, minLon: radarLon, maxLon: radarLon };
+    }
+    const north = destinationPoint(radarLat, radarLon, 0, maxRange);
+    const east = destinationPoint(radarLat, radarLon, 90, maxRange);
+    const south = destinationPoint(radarLat, radarLon, 180, maxRange);
+    const west = destinationPoint(radarLat, radarLon, 270, maxRange);
+
+    let minLat = Math.min(radarLat, north.lat, east.lat, south.lat, west.lat);
+    let maxLat = Math.max(radarLat, north.lat, east.lat, south.lat, west.lat);
+    let minLon = Math.min(radarLon, north.lon, east.lon, south.lon, west.lon);
+    let maxLon = Math.max(radarLon, north.lon, east.lon, south.lon, west.lon);
+
+    const latMargin = (maxLat - minLat) * margin;
+    const lonMargin = (maxLon - minLon) * margin;
+
+    if (west.lon > east.lon) { // Basic check for dateline crossing
+         console.warn("Potential dateline crossing in bounds calculation, simple margin applied.");
+         // More robust handling might be needed depending on location
+         minLon -= lonMargin;
+         maxLon += lonMargin;
+         // Check if expansion crossed +/- 180 and adjust bounds if needed (complex)
+    } else {
+        minLon -= lonMargin;
+        maxLon += lonMargin;
+    }
+
+    minLat -= latMargin;
+    maxLat += latMargin;
+    minLat = Math.max(-90, minLat);
+    maxLat = Math.min(90, maxLat);
+
+    // Handle longitude wrapping more carefully if needed
+    // minLon = (minLon + 540) % 360 - 180;
+    // maxLon = (maxLon + 540) % 360 - 180;
+
+    return { minLat, maxLat, minLon, maxLon };
+}
+
+function distanceAndBearing(lat1, lon1, lat2, lon2) {
+    const lat1Rad = toRadians(lat1);
+    const lon1Rad = toRadians(lon1);
+    const lat2Rad = toRadians(lat2);
+    const lon2Rad = toRadians(lon2);
+
+    const dLat = lat2Rad - lat1Rad;
+    const dLon = lon2Rad - lon1Rad;
+
+    // Distance (Haversine)
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = EARTH_RADIUS_METERS * c;
+
+    // Bearing
+    const y = Math.sin(dLon) * Math.cos(lat2Rad);
+    const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) -
+              Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+    let bearingRad = Math.atan2(y, x);
+
+    // Convert bearing to 0-360 degrees
+    let bearingDeg = (toDegrees(bearingRad) + 360) % 360;
+
+    return { distance, bearing: bearingDeg };
+}
+
+function renderPPI(ctx, sourceImageData, isPlateCarree = false, radarInfo = null) {
+
+    if (!ctx || !sourceImageData || !(sourceImageData instanceof ImageData)) {
+        console.error("Invalid input for renderPPI: requires ctx and a valid ImageData object.");
+        return;
+    }
+
+    const N = sourceImageData.height; // Azimuths
+    const M = sourceImageData.width;  // Range bins
+    const radarPixelData = sourceImageData.data;
+
+    if (N <= 0 || M <= 0) {
+        console.error("Invalid dimensions derived from ImageData (N or M is zero or negative).");
+        return;
+    }
+    if (radarPixelData.length !== N * M * 4) {
+        console.error(`ImageData.data length (${radarPixelData.length}) does not match derived N*M*4 (${N * M * 4}).`);
+        return;
+    }
+    if (isPlateCarree && (!radarInfo || radarInfo.lat == null || radarInfo.lon == null || radarInfo.range == null)) {
+        console.error("radarInfo (lat, lon, range) is required when isPlateCarree is true.");
+        return;
+    }
+
+    const canvasWidth = ctx.canvas.width;
+    const canvasHeight = ctx.canvas.height;
+
+    // *** Clear canvas to transparent ***
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+    // No explicit background fill needed anymore
+
+
+    // --- Plate Carrée Projection ---
+    if (isPlateCarree) {
+        const radarLat = radarInfo.lat;
+        const radarLon = radarInfo.lon;
+        const maxRange = parseFloat(radarInfo.range);
+
+        const bounds = calculateGeoBounds(radarLat, radarLon, maxRange);
+        const { minLat, maxLat, minLon, maxLon } = bounds;
+        const latSpan = maxLat - minLat;
+        const lonSpan = maxLon - minLon;
+
+        // Check for degenerate bounds (prevents division by zero)
+        if (latSpan <= 1e-9 || lonSpan <= 1e-9) { // Use a small epsilon
+            console.warn("Calculated geographic span is effectively zero. Cannot render Plate Carree.");
+            // Optionally draw a marker at the radar location if needed for context
+            if (latSpan > 1e-9 && lonSpan > 1e-9) { // Only if bounds are somewhat valid
+                 const radarCanvasX = ((radarLon - minLon) / lonSpan) * canvasWidth;
+                 const radarCanvasY = ((maxLat - radarLat) / latSpan) * canvasHeight;
+                 ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'; // Semi-transparent white marker
+                 ctx.fillRect(radarCanvasX - 2, radarCanvasY - 2, 4, 4);
+             }
+            return;
+        }
+
+        // --- Option 1: Faster static rendering using putImageData ---
+        if (!shouldLiveUpdate) {
+            const targetImageData = ctx.createImageData(canvasWidth, canvasHeight);
+            const targetData = targetImageData.data;
+
+            for (let py = 0; py < canvasHeight; py++) {
+                for (let px = 0; px < canvasWidth; px++) {
+                    const targetIndex = (py * canvasWidth + px) * 4;
+
+                    // Convert canvas pixel (px, py) back to geographic coords (lon, lat)
+                    const lon = minLon + (px / canvasWidth) * lonSpan;
+                    const lat = maxLat - (py / canvasHeight) * latSpan; // Y is inverted
+
+                    // Check if the calculated lat/lon is within the original bounds
+                    // (Handles margins and potential calculation drift)
+                    if (lat >= minLat && lat <= maxLat && lon >= minLon && lon <= maxLon) {
+
+                        // Calculate distance and bearing from radar center to this lat/lon
+                        const { distance, bearing } = distanceAndBearing(radarLat, radarLon, lat, lon);
+
+                        // Is the canvas pixel's location within the radar range?
+                        if (distance >= 0 && distance <= maxRange) {
+                            // Map distance and bearing back to radar indices (j, i)
+                            const j = Math.min(M - 1, Math.max(0, Math.floor((distance / maxRange) * M)));
+                            const i = Math.min(N - 1, Math.max(0, Math.floor((bearing / 360) * N)));
+
+                            // Get color from source radar data
+                            const sourceIndex = (i * M + j) * 4;
+                            const r = radarPixelData[sourceIndex];
+                            const g = radarPixelData[sourceIndex + 1];
+                            const b = radarPixelData[sourceIndex + 2];
+                            const a = radarPixelData[sourceIndex + 3];
+
+                            // Set color in target ImageData
+                            targetData[targetIndex] = r;
+                            targetData[targetIndex + 1] = g;
+                            targetData[targetIndex + 2] = b;
+                            targetData[targetIndex + 3] = a; // Use source alpha
+
+                        } else {
+                            // Outside radar range - make transparent
+                            targetData[targetIndex] = 0;
+                            targetData[targetIndex + 1] = 0;
+                            targetData[targetIndex + 2] = 0;
+                            targetData[targetIndex + 3] = 0; // Transparent
+                        }
+                    } else {
+                        // Outside the calculated geographic bounds - make transparent
+                        targetData[targetIndex] = 0;
+                        targetData[targetIndex + 1] = 0;
+                        targetData[targetIndex + 2] = 0;
+                        targetData[targetIndex + 3] = 0; // Transparent
+                    }
+                }
+            }
+            ctx.putImageData(targetImageData, 0, 0);
+        }
+        // --- Option 2: Slower live update rendering (draw slightly larger rects) ---
+        else {
+            const liveFillSize = 2; // Draw 2x2 pixel rectangles for better filling
+            for (let i = 0; i < N; i++) { // Azimuth loop
+                const bearing = (i / N) * 360;
+                for (let j = 0; j < M; j++) { // Range bin loop
+                    const distance = ((j + 0.5) / M) * maxRange;
+                    const sourceIndex = (i * M + j) * 4;
+                    const a = radarPixelData[sourceIndex + 3];
+
+                    // Skip transparent pixels in source data for performance
+                    if (a === 0) continue;
+
+                    const point = destinationPoint(radarLat, radarLon, bearing, distance);
+
+                    // Check if point is within *displayable* bounds before mapping
+                    if (point.lat >= minLat && point.lat <= maxLat && point.lon >= minLon && point.lon <= maxLon) {
+                        const canvasX = Math.floor(((point.lon - minLon) / lonSpan) * canvasWidth);
+                        const canvasY = Math.floor(((maxLat - point.lat) / latSpan) * canvasHeight);
+
+                        // Check if calculated canvas coordinates are valid
+                        if (canvasX >= -liveFillSize && canvasX < canvasWidth && canvasY >= -liveFillSize && canvasY < canvasHeight) {
+                            const r = radarPixelData[sourceIndex];
+                            const g = radarPixelData[sourceIndex + 1];
+                            const b = radarPixelData[sourceIndex + 2];
+                            // Alpha 'a' already retrieved
+
+                            ctx.fillStyle = `rgba(${r},${g},${b},${a / 255})`;
+                            // Draw slightly larger rectangle to help fill gaps
+                            ctx.fillRect(canvasX, canvasY, liveFillSize, liveFillSize);
+                        }
+                    }
+                }
+                 // Request animation frame could be added here for smoother live updates
+                 // if (i % 10 === 0) await new Promise(requestAnimationFrame); // Example throttling
+            }
+        }
+
+    // --- Standard PPI Projection ---
+    } else {
+        const centerX = canvasWidth / 2;
+        const centerY = canvasHeight / 2;
+        const maxCanvasRadius = Math.min(centerX, centerY);
+
+            const targetImageData = ctx.createImageData(canvasWidth, canvasHeight);
+            const targetData = targetImageData.data;
+            const maxRadiusSq = maxCanvasRadius * maxCanvasRadius;
+
+            for (let py = 0; py < canvasHeight; py++) {
+                for (let px = 0; px < canvasWidth; px++) {
+                    const dx = px - centerX;
+                    const dy = py - centerY;
+                    const radiusSq = dx * dx + dy * dy;
+                    const targetIndex = (py * canvasWidth + px) * 4;
+
+                    // Is the canvas pixel within the PPI circle?
+                    if (radiusSq <= maxRadiusSq) {
+                        const radius = Math.sqrt(radiusSq);
+                        let angle = Math.atan2(dy, dx);
+                        let radarAngle = angle + Math.PI / 2;
+                        if (radarAngle < 0) radarAngle += 2 * Math.PI;
+                        if (radarAngle >= 2 * Math.PI) radarAngle -= 2 * Math.PI;
+
+                        const j = Math.min(M - 1, Math.max(0, Math.floor((radius / maxCanvasRadius) * M)));
+                        const i = Math.min(N - 1, Math.max(0, Math.floor((radarAngle / (2 * Math.PI)) * N)));
+
+                        const sourceIndex = (i * M + j) * 4;
+                        const r = radarPixelData[sourceIndex];
+                        const g = radarPixelData[sourceIndex + 1];
+                        const b = radarPixelData[sourceIndex + 2];
+                        const a = radarPixelData[sourceIndex + 3];
+
+                        targetData[targetIndex] = r;
+                        targetData[targetIndex + 1] = g;
+                        targetData[targetIndex + 2] = b;
+                        targetData[targetIndex + 3] = a; // Use source alpha
+                    } else {
+                         // Outside the circle - make transparent
+                         targetData[targetIndex] = 0;
+                         targetData[targetIndex + 1] = 0;
+                         targetData[targetIndex + 2] = 0;
+                         targetData[targetIndex + 3] = 0; // *** TRANSPARENT ***
+                    }
+                }
+            }
+            ctx.putImageData(targetImageData, 0, 0);
+    }
+     // console.log("PPI Rendering complete."); // Keep muted unless debugging
+}
+
+
+// --- Mouse Coordinate to Data Index Function ---
+function getPPIPixelIndex(mouseX, mouseY, canvasWidth, canvasHeight, M, N, isPlateCarree = false, radarInfo = null) {
+     if (N <= 0 || M <= 0) {
+        console.error("getPPIPixelIndex: Invalid M or N provided.");
+        return null;
+    }
+
+    if (isPlateCarree) {
+        if (!radarInfo || radarInfo.lat == null || radarInfo.lon == null || radarInfo.range == null) {
+            console.error("getPPIPixelIndex (PlateCarree): radarInfo is required.");
+            return null;
+        }
+        const radarLat = radarInfo.lat;
+        const radarLon = radarInfo.lon;
+        const maxRange = parseFloat(radarInfo.range);
+
+        // 1. Recalculate the geographic bounds used for rendering
+        // It's crucial these bounds match exactly what renderPPI used.
+        const bounds = calculateGeoBounds(radarLat, radarLon, maxRange);
+        const { minLat, maxLat, minLon, maxLon } = bounds;
+        const latSpan = maxLat - minLat;
+        const lonSpan = maxLon - minLon;
+
+        if (latSpan <= 1e-9 || lonSpan <= 1e-9) return null; // Cannot map if span is zero
+
+        // 2. Convert mouse canvas coordinates back to Lat/Lon
+        const lon = minLon + (mouseX / canvasWidth) * lonSpan;
+        const lat = maxLat - (mouseY / canvasHeight) * latSpan; // Y is inverted
+
+        // Optional check: is the mouse pointer outside the geographic bounds?
+         if (lat < minLat || lat > maxLat || lon < minLon || lon > maxLon) {
+            // This usually means the mouse is in the margin area if margins were added
+            // return null; // Uncomment if you want margin clicks to return null
+         }
+
+        // 3. Calculate distance and bearing from radar center to this Lat/Lon
+        const { distance, bearing } = distanceAndBearing(radarLat, radarLon, lat, lon);
+
+
+        // 4. Check if the point is beyond the radar's maximum range
+        if (distance < 0 || distance > maxRange) {
+            return null;
+        }
+
+        // 5. Convert distance and bearing back to radar indices (j, i)
+        // Use floor to get the bin index
+        const j = Math.floor((distance / maxRange) * M);
+        const i = Math.floor((bearing / 360) * N);
+
+        // Clamp indices to valid range (shouldn't be necessary if checks above are correct, but safe)
+        const final_i = Math.min(N - 1, Math.max(0, i));
+        const final_j = Math.min(M - 1, Math.max(0, j));
+
+        // Check bounds again after potential flooring/clamping
+         if (final_i < 0 || final_i >= N || final_j < 0 || final_j >= M) {
+            return null; // Should not happen if distance/bearing logic is correct
+         }
+
+        return final_i * M + final_j; // Return the flat index
+
+    } else { // Standard PPI
+        const centerX = canvasWidth / 2;
+        const centerY = canvasHeight / 2;
+        const maxCanvasRadius = Math.min(centerX, centerY);
+
+        const dx = mouseX - centerX;
+        const dy = mouseY - centerY;
+        const radius = Math.sqrt(dx * dx + dy * dy);
+
+        if (radius > maxCanvasRadius || radius < 0) { // Check if mouse is outside the PPI circle
+            return null;
+        }
+
+        let angle = Math.atan2(dy, dx); // -PI to PI, 0 is right
+        let radarAngle = angle + Math.PI / 2; // Convert canvas angle to radar angle (0=N, clockwise, 0 to 2PI)
+        if (radarAngle < 0) radarAngle += 2 * Math.PI;
+        // Handle potential float precision issues near 2PI
+        if (radarAngle >= 2 * Math.PI) radarAngle -= (2*Math.PI);
+
+
+        // Map radius and angle back to radar indices
+        // Use floor to get the bin index
+        const j = Math.floor((radius / maxCanvasRadius) * M);
+        const i = Math.floor((radarAngle / (2 * Math.PI)) * N);
+
+        // Clamp indices to valid range
+        const final_i = Math.min(N - 1, Math.max(0, i));
+        const final_j = Math.min(M - 1, Math.max(0, j));
+
+       // Final check - although radius check should cover j
+       if (final_i < 0 || final_i >= N || final_j < 0 || final_j >= M) {
+           return null; // Should not happen
+       }
+
+        return final_i * M + final_j; // Return the flat index
+    }
+}
+
+
 async function drawColormap(colorTable) {
 	const colormapCanvas = document.getElementById("colormapCanvas");
 	colormapCanvas.innerHTML = "";
@@ -379,7 +675,9 @@ async function convertToCanvasAsync(imgSrc) {
 			ctx.putImageData(processedImageData, 0, 0);
 		}
 		else if (request == "radar") {
-			renderPPI(ctx, processedImageData, imgSrc.width, imgSrc.height, false, false, radarInfo);
+			radarWidth = imgSrc.width;
+			radarHeight = imgSrc.height;
+			renderPPI(ctx, processedImageData, USE_PLATE_CARREE, radarInfo);
 			forecastbbox = getRadarBBOX(radarInfo);
 		}
 
@@ -490,36 +788,54 @@ function reloadImages() {
 	model = params.get('model') || 'HRRR';
 	variable = params.get('variable') || 'CAPE';
 	level = params.get('level') || 'lev_surface';
-	fetchFile(`/scripts/getLastRun.php?model=${model}`).then(lastRun => {
-		run1 = params.get('run') || lastRun;
-		document.getElementById("modelIndicator").innerHTML = "Model: " + model;
-		if (request == "radar") {
-			document.getElementById("layerIndicator").innerHTML = variable + " (" + level + ")";
-		} else {
-			document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+	if (!isRadar) {
+		let run1 = params.get('run');
+		if (run1 === undefined) {
+			fetchFile(`/scripts/getLastRun.php?model=${model}`)
+				.then(lastRun => {
+					run1 = lastRun;
+				});
 		}
-		fetchFile(`/scripts/getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run1}`).then(listOfFiles => {
-			data = JSON.parse(listOfFiles);
-			console.log(JSON.parse(listOfFiles));
-			run1 = data["run"] * 1000;
-			runNb = new Date(parseInt(run1)).getUTCHours();
-			minValue = data["vmin"];
-			maxValue = data["vmax"];
-			fetchFile('/colormaps/' + variable + '.txt').then(jsonColor => {
-				colorTable = JSON.parse(jsonColor);
-				let isInvertedColormap = false;
-				//inverted colormaps
-				if (variable != "CIN" || variable != "SBT124") {
-					nodata = data["vmin"];
-				} else {
-					nodata = data["vmax"]
+	}
+	document.getElementById("modelIndicator").innerHTML = "Model: " + model;
+	if (request == "radar") {
+		document.getElementById("layerIndicator").innerHTML = variable + " (" + level + ")";
+	} else {
+		document.getElementById("layerIndicator").innerHTML = document.getElementById(variable).innerHTML;
+	}
+	fetchFile(`/scripts/getListOfFiles.php?request=${request}&model=${model}&variable=${variable}&level=${level}&run=${run1}`).then(listOfFiles => {
+		data = JSON.parse(listOfFiles);
+		console.log(JSON.parse(listOfFiles));
+		run1 = data["run"] * 1000;
+		runNb = new Date(parseInt(run1)).getUTCHours();
+		minValue = data["vmin"];
+		maxValue = data["vmax"];
+		let cmapVariable;
 
-				}
-				drawColormap(colorTable);
-				preloadImagesAsync();
-			});
+		if (variable.includes("reflectivity")) {
+			cmapVariable = "REFC";
+		} else if (variable.includes("echo_tops")) {
+			cmapVariable = "RETOP";
+		} else if (variable.includes("velocity")) {
+			cmapVariable = "velocity";
+		} else {
+			cmapVariable = variable;
+		};
 
+		fetchFile('/colormaps/' + cmapVariable + '.txt').then(jsonColor => {
+			colorTable = JSON.parse(jsonColor);
+			let isInvertedColormap = false;
+			//inverted colormaps
+			if (variable != "CIN" || variable != "SBT124") {
+				nodata = data["vmin"];
+			} else {
+				nodata = data["vmax"]
+
+			}
+			drawColormap(colorTable);
+			preloadImagesAsync();
 		});
+
 	});
 
 }
