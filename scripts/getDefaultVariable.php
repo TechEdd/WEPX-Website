@@ -7,7 +7,7 @@
 		$directory = "./downloads/$model/$run/";
 
 		// Define the directory to search
-		$directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/$model/$run/";	
+		$directory = __DIR__ . "/../downloads/$model/$run/";	
 
 		// Check if the directory exists
 		if (!is_dir($directory)) {

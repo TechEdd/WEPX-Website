@@ -16,7 +16,7 @@ $run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
 $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
 $level = sanitizeFilename($_GET['level'] ?? 'lev_surface');
 
-$model_path = $_SERVER['DOCUMENT_ROOT'] . "/downloads/" . $model;
+$model_path = __DIR__ . "/../downloads/" . $model;
 $run_path = "$model_path/$run";
 
 $known_runs = is_dir($model_path) ? scandir($model_path) : [];

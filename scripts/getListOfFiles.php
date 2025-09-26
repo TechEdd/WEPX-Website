@@ -13,12 +13,12 @@ if ($request == "model"){
     $run = sanitizeFilename($_GET['run'] ?? getLastRun($model));
     $variable = sanitizeFilename($_GET['variable'] ?? 'CAPE');
     $level = sanitizeFilename($_GET['level'] ?? getDefaultVariable($model, $run, $variable));
-    $directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/$model/$run/";
+    $directory = __DIR__ . "/../downloads/$model/$run/";
 } else if ($request == "radar"){
     $model = sanitizeFilename($_GET['model'] ?? 'CASBV');
     $level = sanitizeFilename($_GET['level'] ?? "tilt1");
     $variable = sanitizeFilename($_GET['variable'] ?? 'reflectivity_horizontal');
-    $directory = $_SERVER['DOCUMENT_ROOT'] . "/downloads/radars/$model/";
+    $directory = __DIR__ . "/../downloads/radars/$model/";
 }
 
 // Check if the directory exists
